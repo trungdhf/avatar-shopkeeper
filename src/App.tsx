@@ -35,8 +35,8 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [txHash, setTxHash] = useState<Hash>()
   const [notice, setNotice] = useState('')
-  const [spinRequest, setSpinRequest] = useState<{ file: File; id: number } | null>(null)
-  const [spinStatus, setSpinStatus] = useState('')
+  const [motionRequest, setMotionRequest] = useState<{ file: File; id: number } | null>(null)
+  const [motionStatus, setMotionStatus] = useState('')
   const [answer, setAnswer] = useState('Hi! I’m Mochi. Pick a color and try on my Tokyo hip-hop cap.')
 
   useEffect(() => {
@@ -153,7 +153,7 @@ export default function App() {
         <section className="shop-grid" id="shop" aria-label="Avatar shop">
           <div className="avatar-panel">
             <div className="stage-label"><span className="stage-pulse" /> LIVE TRY-ON <span className="stage-count">01 / 01</span></div>
-            <Avatar hatColor={color.hex} wearing={preview} spinRequest={spinRequest} onSpinStatus={setSpinStatus} />
+            <Avatar hatColor={color.hex} wearing={preview} motionRequest={motionRequest} onMotionStatus={setMotionStatus} />
             <div className="stage-bottom"><span>✦ &nbsp; Say hi to Mochi</span><span>Move your cursor to say hello ↗</span></div>
             <div className="speech-bubble"><span className="sparkle">✳</span> {answer}</div>
           </div>
@@ -167,14 +167,14 @@ export default function App() {
             <div className="purchase-area"><div className="price-row"><div><span className="price-label">ONE-TIME UNLOCK</span><strong>{price === undefined ? '0.0001 ETH' : `${formatEther(price)} ETH`}</strong></div><span className="network-badge"><span /> SEPOLIA TESTNET</span></div>
               <button className="buy-button" type="button" disabled={busy || owned} onClick={() => void purchase()}>{busy ? 'Processing…' : owned ? 'Owned by your wallet ✓' : !account ? 'Connect wallet to unlock ↗' : 'Unlock the cap ↗'}</button>
               <button className="preview-button" type="button" onClick={() => setPreview((current) => !current)}>{preview ? 'Take off the cap' : owned ? 'Equip my cap' : 'Try it on for free'} <span>↗</span></button>
-              <label className="motion-upload" htmlFor="spin-upload">Try VRoid Spin (.vrma) ↗</label>
-              <input id="spin-upload" className="motion-file" type="file" accept=".vrma" aria-label="Choose a VRoid motion file" onChange={(event) => {
+              <label className="motion-upload" htmlFor="motion-upload">Try an official VRoid motion (.vrma) ↗</label>
+              <input id="motion-upload" className="motion-file" type="file" accept=".vrma" aria-label="Choose a VRoid motion file" onChange={(event) => {
                 const file = event.target.files?.[0]
-                if (file) setSpinRequest({ file, id: Date.now() })
+                if (file) setMotionRequest({ file, id: Date.now() })
                 event.target.value = ''
               }} />
-              <p className="motion-note">Choose VRMA_05 from the <a href="https://booth.pm/ja/items/5512385" target="_blank" rel="noreferrer">free VRoid motion pack ↗</a>. Your file stays in this browser. Character animation credits to pixiv Inc.'s VRoid Project.</p>
-              {spinStatus && <p role="status" className="motion-status">{spinStatus}</p>}
+              <p className="motion-note">Choose VRMA_02 (greeting) or VRMA_05 (spin) from the <a href="https://booth.pm/ja/items/5512385" target="_blank" rel="noreferrer">free VRoid motion pack ↗</a>. Your file stays in this browser. Character animation credits to pixiv Inc.'s VRoid Project.</p>
+              {motionStatus && <p role="status" className="motion-status">{motionStatus}</p>}
               <p className="purchase-note">{owned ? 'Onchain unlock found for this wallet. All colors are yours.' : 'Preview for free. Buy once to unlock every color for this wallet.'}</p>
               {!storeAddress && <p className="setup-note">Checkout opens after a Sepolia contract is deployed and configured.</p>}
               {chainId !== undefined && chainId !== sepolia.id && <p className="setup-note">Switch your wallet to Sepolia to check out.</p>}

@@ -2,7 +2,7 @@ import { Canvas, createPortal, useFrame, useLoader, useThree } from '@react-thre
 import { VRMLoaderPlugin, type VRM } from '@pixiv/three-vrm'
 import { createVRMAnimationClip, VRMAnimationLoaderPlugin, type VRMAnimation } from '@pixiv/three-vrm-animation'
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
-import { AnimationMixer, CanvasTexture, DoubleSide, LoopOnce, SRGBColorSpace, Vector3, type AnimationAction, type Group } from 'three'
+import { AnimationMixer, CanvasTexture, DoubleSide, LoopOnce, PlaneGeometry, SRGBColorSpace, Vector3, type AnimationAction, type Group } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 function HipHopCap({ color }: { color: string }) {
@@ -31,6 +31,20 @@ function HipHopCap({ color }: { color: string }) {
   }, [])
 
   useEffect(() => () => patch.dispose(), [patch])
+  const patchSurface = useMemo(() => {
+    const geometry = new PlaneGeometry(0.13, 0.054, 16, 8)
+    const positions = geometry.attributes.position
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i)
+      const y = positions.getY(i) + 0.063
+      const dome = Math.max(0, 1 - (x / 0.1134) ** 2 - (y / 0.11025) ** 2)
+      positions.setZ(i, 0.025 + 0.16275 * Math.sqrt(dome) + 0.004)
+    }
+    geometry.computeVertexNormals()
+    return geometry
+  }, [])
+
+  useEffect(() => () => patchSurface.dispose(), [patchSurface])
 
   return (
     <group position={[0, 0.1, 0.005]}>
@@ -46,8 +60,8 @@ function HipHopCap({ color }: { color: string }) {
         <sphereGeometry args={[1, 32, 16]} />
         <meshStandardMaterial color={color} roughness={0.75} />
       </mesh>
-      <mesh position={[0, 0.068, 0.195]}>
-        <planeGeometry args={[0.143, 0.064]} />
+      <mesh position={[0, 0.063, 0]}>
+        <primitive object={patchSurface} attach="geometry" />
         <meshBasicMaterial map={patch} side={DoubleSide} />
       </mesh>
       <mesh position={[0, 0.102, 0.025]}>
@@ -58,38 +72,33 @@ function HipHopCap({ color }: { color: string }) {
   )
 }
 
-type SpinRequest = { file: File; id: number }
+type MotionRequest = { file: File; id: number }
 
-function Character({ hatColor, wearing, spinRequest, onSpinStatus }: {
+function Character({ hatColor, wearing, motionRequest, onMotionStatus }: {
   hatColor: string
   wearing: boolean
-  spinRequest: SpinRequest | null
-  onSpinStatus: (message: string) => void
+  motionRequest: MotionRequest | null
+  onMotionStatus: (message: string) => void
 }) {
   const character = useRef<Group>(null)
   const camera = useThree(({ camera }) => camera)
+  const size = useThree(({ size }) => size)
   const gltf = useLoader(GLTFLoader, '/avatars/real2.vrm', (loader) => {
     loader.register((parser) => new VRMLoaderPlugin(parser))
   })
-  const [idleGltf, greetingGltf] = useLoader(GLTFLoader, ['/anims/Relax.vrma', '/anims/Goodbye.vrma'], (loader) => {
+  const idleGltf = useLoader(GLTFLoader, '/anims/LookAround.vrma', (loader) => {
     loader.register((parser) => new VRMAnimationLoaderPlugin(parser))
   })
   const vrm = gltf.userData.vrm as VRM
   const head = useMemo(() => vrm.humanoid.getNormalizedBoneNode('head'), [vrm])
   const motion = useMemo(() => {
     const idleAnimation = (idleGltf.userData.vrmAnimations as VRMAnimation[])[0]
-    const greetingAnimation = (greetingGltf.userData.vrmAnimations as VRMAnimation[])[0]
     const mixer = new AnimationMixer(vrm.scene)
     const idle = mixer.clipAction(createVRMAnimationClip(idleAnimation, vrm))
-    const greeting = mixer.clipAction(createVRMAnimationClip(greetingAnimation, vrm))
-    greeting.setLoop(LoopOnce, 1)
-    greeting.clampWhenFinished = true
-    return { mixer, idle, greeting }
-  }, [vrm, idleGltf, greetingGltf])
-  const greetingCycle = useRef(-1)
-  const returningToIdle = useRef(false)
-  const spinAction = useRef<AnimationAction | null>(null)
-  const spinActive = useRef(false)
+    return { mixer, idle }
+  }, [vrm, idleGltf])
+  const selectedAction = useRef<AnimationAction | null>(null)
+  const selectedActive = useRef(false)
 
   useEffect(() => {
     motion.idle.play()
@@ -100,13 +109,13 @@ function Character({ hatColor, wearing, spinRequest, onSpinStatus }: {
   }, [motion, vrm])
 
   useEffect(() => {
-    if (!spinRequest) return
+    if (!motionRequest) return
     let active = true
     let clip: ReturnType<typeof createVRMAnimationClip> | undefined
-    onSpinStatus('Loading your VRoid motion…')
+    onMotionStatus('Loading your VRoid motion…')
     const loader = new GLTFLoader()
     loader.register((parser) => new VRMAnimationLoaderPlugin(parser))
-    void spinRequest.file.arrayBuffer()
+    void motionRequest.file.arrayBuffer()
       .then((buffer) => loader.parseAsync(buffer, ''))
       .then((animationGltf) => {
         if (!active) return
@@ -116,24 +125,23 @@ function Character({ hatColor, wearing, spinRequest, onSpinStatus }: {
         const action = motion.mixer.clipAction(clip)
         action.setLoop(LoopOnce, 1)
         action.clampWhenFinished = true
-        motion.greeting.stop()
         action.reset().play().crossFadeFrom(motion.idle, 0.4, false)
-        spinAction.current = action
-        spinActive.current = true
-        onSpinStatus('Playing your local motion. The file stays in your browser.')
+        selectedAction.current = action
+        selectedActive.current = true
+        onMotionStatus('Playing your local motion. The file stays in your browser.')
       })
       .catch((error: unknown) => {
-        if (active) onSpinStatus(error instanceof Error ? `Could not play motion: ${error.message}` : 'Could not play this motion.')
+        if (active) onMotionStatus(error instanceof Error ? `Could not play motion: ${error.message}` : 'Could not play this motion.')
       })
     return () => {
       active = false
-      spinActive.current = false
-      spinAction.current?.stop()
-      spinAction.current = null
+      selectedActive.current = false
+      selectedAction.current?.stop()
+      selectedAction.current = null
       if (clip) motion.mixer.uncacheAction(clip, vrm.scene)
       motion.idle.reset().play()
     }
-  }, [spinRequest, motion, vrm, onSpinStatus])
+  }, [motionRequest, motion, vrm, onMotionStatus])
 
   useLayoutEffect(() => {
     if (!head) return
@@ -148,23 +156,17 @@ function Character({ hatColor, wearing, spinRequest, onSpinStatus }: {
       character.current.rotation.y += (pointer.x * 0.16 - character.current.rotation.y) * 0.035
     }
     const time = clock.elapsedTime
-    const cycle = Math.floor(time / 9)
-    if (spinActive.current && spinAction.current) {
-      greetingCycle.current = cycle
-      if (spinAction.current.time >= spinAction.current.getClip().duration - 0.4) {
-        motion.idle.reset().play().crossFadeFrom(spinAction.current, 0.4, false)
-        spinActive.current = false
-      }
+    if (selectedActive.current && selectedAction.current &&
+      selectedAction.current.time >= selectedAction.current.getClip().duration - 0.4) {
+      motion.idle.reset().play().crossFadeFrom(selectedAction.current, 0.4, false)
+      selectedActive.current = false
+    }
+    const fullBodyDistance = 1.5 / (Math.tan(14 * Math.PI / 180) * (size.width / size.height))
+    const targetDistance = selectedActive.current ? Math.max(5.6, fullBodyDistance) : 3.4
+    if (selectedActive.current && camera.position.z < targetDistance) {
+      camera.position.z = targetDistance
     } else {
-      if (cycle !== greetingCycle.current) {
-        motion.greeting.reset().play().crossFadeFrom(motion.idle, 0.4, false)
-        greetingCycle.current = cycle
-        returningToIdle.current = false
-      }
-      if (!returningToIdle.current && motion.greeting.time >= motion.greeting.getClip().duration - 0.5) {
-        motion.idle.reset().play().crossFadeFrom(motion.greeting, 0.4, false)
-        returningToIdle.current = true
-      }
+      camera.position.z += (targetDistance - camera.position.z) * Math.min(1, delta * 4)
     }
     motion.mixer.update(delta)
     const blinkTime = (time + 3) % 4.2
@@ -181,11 +183,11 @@ function Character({ hatColor, wearing, spinRequest, onSpinStatus }: {
   )
 }
 
-export default function Avatar({ hatColor, wearing, spinRequest, onSpinStatus }: {
+export default function Avatar({ hatColor, wearing, motionRequest, onMotionStatus }: {
   hatColor: string
   wearing: boolean
-  spinRequest: SpinRequest | null
-  onSpinStatus: (message: string) => void
+  motionRequest: MotionRequest | null
+  onMotionStatus: (message: string) => void
 }) {
   return (
     <Canvas camera={{ position: [0, 1.5, 3.4], fov: 28 }} shadows dpr={[1, 2]}>
@@ -194,7 +196,7 @@ export default function Avatar({ hatColor, wearing, spinRequest, onSpinStatus }:
       <directionalLight position={[-3, 5, 5]} intensity={2.5} castShadow />
       <directionalLight position={[4, 1, -3]} intensity={1.5} color="#ffc4a4" />
       <Suspense fallback={null}>
-        <Character hatColor={hatColor} wearing={wearing} spinRequest={spinRequest} onSpinStatus={onSpinStatus} />
+        <Character hatColor={hatColor} wearing={wearing} motionRequest={motionRequest} onMotionStatus={onMotionStatus} />
       </Suspense>
     </Canvas>
   )
