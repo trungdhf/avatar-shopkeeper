@@ -1,23 +1,58 @@
 import { Canvas, createPortal, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { VRMLoaderPlugin, type VRM } from '@pixiv/three-vrm'
-import { Suspense, useLayoutEffect, useMemo, useRef } from 'react'
-import { DoubleSide, Vector3, type Group } from 'three'
+import { createVRMAnimationClip, VRMAnimationLoaderPlugin, type VRMAnimation } from '@pixiv/three-vrm-animation'
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { AnimationMixer, CanvasTexture, DoubleSide, LoopOnce, SRGBColorSpace, Vector3, type Group } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-function NonLa({ color }: { color: string }) {
+function HipHopCap({ color }: { color: string }) {
+  const patch = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 512
+    canvas.height = 256
+    const context = canvas.getContext('2d')
+    if (context) {
+      context.fillStyle = '#222733'
+      context.fillRect(0, 0, 512, 256)
+      context.strokeStyle = '#f5e4c8'
+      context.lineWidth = 12
+      context.strokeRect(12, 12, 488, 232)
+      context.fillStyle = '#fff8eb'
+      context.textAlign = 'center'
+      context.font = '900 70px sans-serif'
+      context.fillText('ETHGLOBAL', 256, 120)
+      context.font = 'bold 45px sans-serif'
+      context.fillText('TOKYO 2026', 256, 186)
+    }
+    const texture = new CanvasTexture(canvas)
+    texture.colorSpace = SRGBColorSpace
+    texture.anisotropy = 8
+    return texture
+  }, [])
+
+  useEffect(() => () => patch.dispose(), [patch])
+
   return (
-    <group position={[0, 0.1, 0.025]}>
-      <mesh position={[0, 0.115, 0]} castShadow>
-        <coneGeometry args={[0.19, 0.23, 48, 1, true]} />
-        <meshStandardMaterial color="#e9d4a5" roughness={0.95} side={DoubleSide} />
+    <group position={[0, 0.1, 0.005]}>
+      <mesh position={[0, 0, 0.025]} scale={[1.08, 1.05, 1.55]} castShadow>
+        <sphereGeometry args={[0.105, 36, 24, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color={color} roughness={0.8} side={DoubleSide} />
       </mesh>
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.19, 0.009, 8, 48]} />
-        <meshStandardMaterial color={color} roughness={0.8} />
+      <mesh position={[0, 0, 0.025]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 1.45, 1]}>
+        <torusGeometry args={[0.112, 0.006, 8, 48]} />
+        <meshStandardMaterial color="#292d38" roughness={0.85} />
       </mesh>
-      <mesh position={[0, 0.065, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.136, 0.004, 6, 48]} />
-        <meshStandardMaterial color={color} roughness={0.8} />
+      <mesh position={[0, 0.001, 0.165]} rotation={[0.15, 0, 0]} scale={[0.125, 0.008, 0.087]} castShadow>
+        <sphereGeometry args={[1, 32, 16]} />
+        <meshStandardMaterial color={color} roughness={0.75} />
+      </mesh>
+      <mesh position={[0, 0.052, 0.15]} rotation={[-0.2, 0, 0]}>
+        <planeGeometry args={[0.143, 0.064]} />
+        <meshBasicMaterial map={patch} side={DoubleSide} />
+      </mesh>
+      <mesh position={[0, 0.102, 0.025]}>
+        <sphereGeometry args={[0.012, 16, 12]} />
+        <meshStandardMaterial color="#292d38" roughness={0.85} />
       </mesh>
     </group>
   )
@@ -29,65 +64,56 @@ function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }
   const gltf = useLoader(GLTFLoader, '/avatars/real2.vrm', (loader) => {
     loader.register((parser) => new VRMLoaderPlugin(parser))
   })
+  const [idleGltf, greetingGltf] = useLoader(GLTFLoader, ['/anims/Relax.vrma', '/anims/Goodbye.vrma'], (loader) => {
+    loader.register((parser) => new VRMAnimationLoaderPlugin(parser))
+  })
   const vrm = gltf.userData.vrm as VRM
-  const pose = useMemo(() => {
-    const head = vrm.humanoid.getNormalizedBoneNode('head')
-    const leftArm = vrm.humanoid.getNormalizedBoneNode('leftUpperArm')
-    const rightArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm')
-    const rightForearm = vrm.humanoid.getNormalizedBoneNode('rightLowerArm')
-    const rightHand = vrm.humanoid.getNormalizedBoneNode('rightHand')
-    return {
-      head,
-      headRest: head?.rotation.clone(),
-      leftArm,
-      leftArmRest: leftArm?.rotation.clone(),
-      rightArm,
-      rightArmRest: rightArm?.rotation.clone(),
-      rightForearm,
-      rightForearmRest: rightForearm?.rotation.clone(),
-      rightHand,
-      rightHandRest: rightHand?.rotation.clone(),
+  const head = useMemo(() => vrm.humanoid.getNormalizedBoneNode('head'), [vrm])
+  const motion = useMemo(() => {
+    const idleAnimation = (idleGltf.userData.vrmAnimations as VRMAnimation[])[0]
+    const greetingAnimation = (greetingGltf.userData.vrmAnimations as VRMAnimation[])[0]
+    const mixer = new AnimationMixer(vrm.scene)
+    const idle = mixer.clipAction(createVRMAnimationClip(idleAnimation, vrm))
+    const greeting = mixer.clipAction(createVRMAnimationClip(greetingAnimation, vrm))
+    greeting.setLoop(LoopOnce, 1)
+    greeting.clampWhenFinished = true
+    return { mixer, idle, greeting }
+  }, [vrm, idleGltf, greetingGltf])
+  const greetingCycle = useRef(-1)
+  const returningToIdle = useRef(false)
+
+  useEffect(() => {
+    motion.idle.play()
+    return () => {
+      motion.mixer.stopAllAction()
+      motion.mixer.uncacheRoot(vrm.scene)
     }
-  }, [vrm])
+  }, [motion, vrm])
 
   useLayoutEffect(() => {
-    if (!pose.head) return
+    if (!head) return
     vrm.scene.updateMatrixWorld(true)
-    const headY = pose.head.getWorldPosition(new Vector3()).y
+    const headY = head.getWorldPosition(new Vector3()).y
     camera.position.set(0, headY - 0.35, 3.4)
     camera.lookAt(0, headY - 0.4, 0)
-  }, [camera, pose, vrm])
+  }, [camera, head, vrm])
 
   useFrame(({ clock, pointer }, delta) => {
     if (character.current) {
       character.current.rotation.y += (pointer.x * 0.16 - character.current.rotation.y) * 0.035
     }
     const time = clock.elapsedTime
-    const greeting = time % 9
-    const inProgress = Math.min(1, greeting / 0.55)
-    const outProgress = Math.min(1, Math.max(0, (3.2 - greeting) / 0.55))
-    const wave = inProgress * inProgress * (3 - 2 * inProgress) * outProgress * outProgress * (3 - 2 * outProgress)
-
-    if (pose.head && pose.headRest) {
-      pose.head.rotation.x = pose.headRest.x + Math.sin(time * 1.1) * 0.025
-      pose.head.rotation.y = pose.headRest.y + Math.sin(time * 0.8) * 0.045
-      pose.head.rotation.z = pose.headRest.z + Math.sin(time * 1.3) * 0.085
+    const cycle = Math.floor(time / 9)
+    if (cycle !== greetingCycle.current) {
+      motion.greeting.reset().play().crossFadeFrom(motion.idle, 0.4, false)
+      greetingCycle.current = cycle
+      returningToIdle.current = false
     }
-    if (pose.leftArm && pose.leftArmRest) {
-      pose.leftArm.rotation.z = pose.leftArmRest.z - 1.2
+    if (!returningToIdle.current && motion.greeting.time >= motion.greeting.getClip().duration - 0.5) {
+      motion.idle.reset().play().crossFadeFrom(motion.greeting, 0.4, false)
+      returningToIdle.current = true
     }
-    if (pose.rightArm && pose.rightArmRest) {
-      pose.rightArm.rotation.y = pose.rightArmRest.y + wave * 1.3
-      pose.rightArm.rotation.z = pose.rightArmRest.z + 1.2 - wave * 0.75
-    }
-    if (pose.rightForearm && pose.rightForearmRest) {
-      pose.rightForearm.rotation.z = pose.rightForearmRest.z - wave * 1.4
-    }
-    if (pose.rightHand && pose.rightHandRest) {
-      pose.rightHand.rotation.x = pose.rightHandRest.x + wave * 0.15
-      pose.rightHand.rotation.y = pose.rightHandRest.y + wave * (0.18 + Math.sin(time * 11) * 0.35)
-      pose.rightHand.rotation.z = pose.rightHandRest.z + wave * 0.1
-    }
+    motion.mixer.update(delta)
     const blinkTime = (time + 3) % 4.2
     const blink = blinkTime < 0.12 ? blinkTime / 0.12 : blinkTime < 0.2 ? 1 : Math.max(0, 1 - (blinkTime - 0.2) / 0.15)
     vrm.expressionManager?.setValue('blink', blink)
@@ -97,7 +123,7 @@ function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }
   return (
     <group ref={character}>
       <primitive object={vrm.scene} />
-      {pose.head && wearing && createPortal(<NonLa color={hatColor} />, pose.head)}
+      {head && wearing && createPortal(<HipHopCap color={hatColor} />, head)}
     </group>
   )
 }
