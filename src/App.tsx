@@ -40,7 +40,7 @@ export default function App() {
   const [busy, setBusy] = useState<Product | null>(null)
   const [txHash, setTxHash] = useState<Hash>()
   const [notice, setNotice] = useState('')
-  const [motionRequest, setMotionRequest] = useState<{ file: File; id: number } | null>(null)
+  const [motionRequest, setMotionRequest] = useState<{ files: File[]; id: number } | null>(null)
   const [motionStatus, setMotionStatus] = useState('')
   const [answer, setAnswer] = useState('Hi! I’m Mochi. Pick a color and try on my Tokyo hip-hop cap.')
 
@@ -192,12 +192,12 @@ export default function App() {
               <button className="preview-button" type="button" onClick={() => setGlassesPreview((current) => !current)}>{glassesPreview ? 'Take off the shades' : glassesOwned ? 'Equip my shades' : 'Try the shades for free'} <span>↗</span></button>
               <div className="divider" />
               <label className="motion-upload" htmlFor="motion-upload">Try an official VRoid motion (.vrma) ↗</label>
-              <input id="motion-upload" className="motion-file" type="file" accept=".vrma" aria-label="Choose a VRoid motion file" onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) setMotionRequest({ file, id: Date.now() })
+              <input id="motion-upload" className="motion-file" type="file" accept=".vrma" multiple aria-label="Choose one or more VRoid motion files" onChange={(event) => {
+                const files = Array.from(event.target.files ?? []).sort((a, b) => a.name.localeCompare(b.name))
+                if (files.length) setMotionRequest({ files, id: Date.now() })
                 event.target.value = ''
               }} />
-              <p className="motion-note">Choose VRMA_03 (peace sign) for a friendly hello, or VRMA_05 (spin) from the <a href="https://booth.pm/ja/items/5512385" target="_blank" rel="noreferrer">free VRoid motion pack ↗</a>. Your file stays in this browser. Character animation credits to pixiv Inc.'s VRoid Project.</p>
+              <p className="motion-note">For a runway show, select VRMA_01 (show full body), VRMA_05 (spin) and VRMA_06 (model pose) together; they play in file order. VRMA_03 (peace sign) makes a friendly hello. Get them from the <a href="https://booth.pm/ja/items/5512385" target="_blank" rel="noreferrer">free VRoid motion pack ↗</a>. Your file stays in this browser. Character animation credits to pixiv Inc.'s VRoid Project.</p>
               {motionStatus && <p role="status" className="motion-status">{motionStatus}</p>}
               <p className="purchase-note">{owned ? 'Cap unlock found for this wallet. All colors are yours.' : 'Preview for free. The cap and shades are unlocked separately.'}{glassesOwned ? ' Shades unlock found.' : ''}</p>
               {!storeAddress && <p className="setup-note">Checkout opens after a Sepolia contract is deployed and configured.</p>}

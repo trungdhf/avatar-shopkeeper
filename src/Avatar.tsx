@@ -101,7 +101,7 @@ function Sunglasses() {
   )
 }
 
-type MotionRequest = { file: File; id: number }
+type MotionRequest = { files: File[]; id: number }
 
 function Character({ hatColor, wearing, wearingGlasses, motionRequest, onMotionStatus }: {
   hatColor: string
@@ -129,6 +129,7 @@ function Character({ hatColor, wearing, wearingGlasses, motionRequest, onMotionS
   }, [vrm, idleGltf])
   const selectedAction = useRef<AnimationAction | null>(null)
   const selectedActive = useRef(false)
+  const queuedActions = useRef<AnimationAction[]>([])
   const motionEndTime = useRef<number | null>(null)
 
   useEffect(() => {
@@ -142,25 +143,35 @@ function Character({ hatColor, wearing, wearingGlasses, motionRequest, onMotionS
   useEffect(() => {
     if (!motionRequest) return
     let active = true
-    let clip: ReturnType<typeof createVRMAnimationClip> | undefined
+    const clips: ReturnType<typeof createVRMAnimationClip>[] = []
     motionEndTime.current = null
-    onMotionStatus('Loading your VRoid motion…')
+    onMotionStatus(motionRequest.files.length > 1 ? `Loading ${motionRequest.files.length} VRoid motions…` : 'Loading your VRoid motion…')
     const loader = new GLTFLoader()
     loader.register((parser) => new VRMAnimationLoaderPlugin(parser))
-    void motionRequest.file.arrayBuffer()
-      .then((buffer) => loader.parseAsync(buffer, ''))
-      .then((animationGltf) => {
+    void Promise.all(motionRequest.files.map(async (file) => {
+      const animationGltf = await loader.parseAsync(await file.arrayBuffer(), '')
+      const animation = (animationGltf.userData.vrmAnimations as VRMAnimation[] | undefined)?.[0]
+      if (!animation) throw new Error(`${file.name} does not contain a VRM animation.`)
+      return animation
+    }))
+      .then((animations) => {
         if (!active) return
-        const animation = (animationGltf.userData.vrmAnimations as VRMAnimation[] | undefined)?.[0]
-        if (!animation) throw new Error('This file does not contain a VRM animation.')
-        clip = createVRMAnimationClip(animation, vrm)
-        const action = motion.mixer.clipAction(clip)
-        action.setLoop(LoopOnce, 1)
-        action.clampWhenFinished = true
-        action.reset().play().crossFadeFrom(motion.idle, 0.4, false)
-        selectedAction.current = action
+        const actions = animations.map((animation) => {
+          const clip = createVRMAnimationClip(animation, vrm)
+          clips.push(clip)
+          const action = motion.mixer.clipAction(clip)
+          action.setLoop(LoopOnce, 1)
+          action.clampWhenFinished = true
+          return action
+        })
+        const [first, ...rest] = actions
+        first.reset().play().crossFadeFrom(motion.idle, 0.4, false)
+        selectedAction.current = first
+        queuedActions.current = rest
         selectedActive.current = true
-        onMotionStatus('Playing your local motion. The file stays in your browser.')
+        onMotionStatus(actions.length > 1
+          ? `Playing your ${actions.length}-motion runway show. Files stay in your browser.`
+          : 'Playing your local motion. The file stays in your browser.')
       })
       .catch((error: unknown) => {
         if (active) onMotionStatus(error instanceof Error ? `Could not play motion: ${error.message}` : 'Could not play this motion.')
@@ -169,9 +180,12 @@ function Character({ hatColor, wearing, wearingGlasses, motionRequest, onMotionS
       active = false
       selectedActive.current = false
       motionEndTime.current = null
-      selectedAction.current?.stop()
+      queuedActions.current = []
       selectedAction.current = null
-      if (clip) motion.mixer.uncacheAction(clip, vrm.scene)
+      for (const clip of clips) {
+        motion.mixer.clipAction(clip).stop()
+        motion.mixer.uncacheAction(clip, vrm.scene)
+      }
       motion.idle.reset().play()
     }
   }, [motionRequest, motion, vrm, onMotionStatus])
@@ -191,9 +205,15 @@ function Character({ hatColor, wearing, wearingGlasses, motionRequest, onMotionS
     const time = clock.elapsedTime
     if (selectedActive.current && selectedAction.current &&
       selectedAction.current.time >= selectedAction.current.getClip().duration - 0.4) {
-      motion.idle.reset().play().crossFadeFrom(selectedAction.current, 0.4, false)
-      selectedActive.current = false
-      motionEndTime.current = time + 0.9
+      const next = queuedActions.current.shift()
+      if (next) {
+        next.reset().play().crossFadeFrom(selectedAction.current, 0.4, false)
+        selectedAction.current = next
+      } else {
+        motion.idle.reset().play().crossFadeFrom(selectedAction.current, 0.4, false)
+        selectedActive.current = false
+        motionEndTime.current = time + 0.9
+      }
     }
     if (motionEndTime.current !== null && time >= motionEndTime.current) {
       motionEndTime.current = null

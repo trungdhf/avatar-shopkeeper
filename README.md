@@ -6,7 +6,7 @@ A second accessory, **Shibuya Shades** (sakura-tinted sunglasses), is sold separ
 
 Live preview: https://avatar-shopkeeper.vercel.app. The preview and color switcher work; checkout requires a deployed Sepolia contract and `VITE_STORE_ADDRESS` on Vercel. Until then, the live site displays a setup notice.
 
-To try VRoid Project's friendly peace sign or full-body spin, download the [free seven-motion pack](https://booth.pm/ja/items/5512385) from BOOTH, extract `VRMA_03.vrma` (Peace sign) or `VRMA_05.vrma` (Spin) and select it with **Try an official VRoid motion** on the shop page. The picker accepts other motions in the pack too, including `VRMA_02.vrma` (Greeting). The file is parsed in your browser and never uploaded. BOOTH's license permits use and testing but prohibits redistribution of extractable motion files; this project does not include or host them. Character animation credits to pixiv Inc.'s VRoid Project.
+To try VRoid Project's friendly peace sign or full-body spin, download the [free seven-motion pack](https://booth.pm/ja/items/5512385) from BOOTH, extract `VRMA_03.vrma` (Peace sign) or `VRMA_05.vrma` (Spin) and select it with **Try an official VRoid motion** on the shop page. The picker accepts other motions in the pack too, including `VRMA_02.vrma` (Greeting). Select several files at once for a runway show: they play back-to-back in file-name order, e.g. `VRMA_01` (Show full body) → `VRMA_05` (Spin) → `VRMA_06` (Model pose), then return to idle. The file is parsed in your browser and never uploaded. BOOTH's license permits use and testing but prohibits redistribution of extractable motion files; this project does not include or host them. Character animation credits to pixiv Inc.'s VRoid Project.
 
 ## Run locally
 
