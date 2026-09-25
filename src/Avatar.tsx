@@ -77,10 +77,11 @@ function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }
       pose.leftArm.rotation.z = pose.leftArmRest.z - 1.2
     }
     if (pose.rightArm && pose.rightArmRest) {
-      pose.rightArm.rotation.z = pose.rightArmRest.z + 1.2 - wave * 2.1
+      pose.rightArm.rotation.y = pose.rightArmRest.y + wave * 1.15
+      pose.rightArm.rotation.z = pose.rightArmRest.z + 1.2 - wave * 1.1
     }
     if (pose.rightForearm && pose.rightForearmRest) {
-      pose.rightForearm.rotation.z = pose.rightForearmRest.z - wave * 1.05
+      pose.rightForearm.rotation.z = pose.rightForearmRest.z - wave * 1.1
     }
     if (pose.rightHand && pose.rightHandRest) {
       pose.rightHand.rotation.z = pose.rightHandRest.z + wave * (0.18 + Math.sin(time * 13) * 0.27)
