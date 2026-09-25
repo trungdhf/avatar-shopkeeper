@@ -37,8 +37,8 @@ function HipHopCap({ color }: { color: string }) {
     for (let i = 0; i < positions.count; i++) {
       const x = positions.getX(i)
       const y = positions.getY(i) + 0.063
-      const dome = Math.max(0, 1 - (x / 0.126) ** 2 - (y / 0.147) ** 2)
-      positions.setZ(i, 0.025 + 0.189 * Math.sqrt(dome) + 0.004)
+      const dome = Math.max(0, 1 - (x / 0.1197) ** 2 - (y / 0.126) ** 2)
+      positions.setZ(i, 0.015 + 0.18375 * Math.sqrt(dome) + 0.004)
     }
     geometry.computeVertexNormals()
     return geometry
@@ -48,11 +48,11 @@ function HipHopCap({ color }: { color: string }) {
 
   return (
     <group position={[0, 0.085, 0.005]} scale={0.86}>
-      <mesh position={[0, 0, 0.025]} scale={[1.2, 1.4, 1.8]} castShadow>
+      <mesh position={[0, 0, 0.015]} scale={[1.14, 1.2, 1.75]} castShadow>
         <sphereGeometry args={[0.105, 36, 24, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshStandardMaterial color={color} roughness={0.8} side={DoubleSide} />
       </mesh>
-      <mesh position={[0, 0, 0.025]} rotation={[Math.PI / 2, 0, 0]} scale={[1.13, 1.65, 1]}>
+      <mesh position={[0, 0, 0.015]} rotation={[Math.PI / 2, 0, 0]} scale={[1.07, 1.62, 1]}>
         <torusGeometry args={[0.112, 0.006, 8, 48]} />
         <meshStandardMaterial color="#292d38" roughness={0.85} />
       </mesh>
