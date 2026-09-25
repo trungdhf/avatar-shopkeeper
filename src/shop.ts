@@ -20,6 +20,18 @@ export const shopAbi = [
     inputs: [{ name: 'buyer', type: 'address' }], outputs: [{ type: 'bool' }],
   },
   {
+    type: 'function', name: 'GLASSES_PRICE', stateMutability: 'view', inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function', name: 'hasGlasses', stateMutability: 'view',
+    inputs: [{ name: 'buyer', type: 'address' }], outputs: [{ type: 'bool' }],
+  },
+  {
+    type: 'function', name: 'purchaseGlasses', stateMutability: 'payable',
+    inputs: [], outputs: [],
+  },
+  {
     type: 'function', name: 'purchaseHat', stateMutability: 'payable',
     inputs: [], outputs: [],
   },

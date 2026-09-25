@@ -72,11 +72,41 @@ function HipHopCap({ color }: { color: string }) {
   )
 }
 
+function Sunglasses() {
+  return (
+    <group position={[0, 0.054, 0.114]}>
+      {[-0.032, 0.032].map((x) => (
+        <group key={x} position={[x, 0, 0]}>
+          <mesh scale={[1.15, 0.85, 1]}>
+            <torusGeometry args={[0.021, 0.0028, 8, 32]} />
+            <meshStandardMaterial color="#1f2029" roughness={0.35} metalness={0.2} />
+          </mesh>
+          <mesh scale={[1.15, 0.85, 1]}>
+            <circleGeometry args={[0.021, 32]} />
+            <meshStandardMaterial color="#e6826c" roughness={0.1} metalness={0.4} transparent opacity={0.72} side={DoubleSide} />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={[0, 0.006, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.0024, 0.0024, 0.018, 8]} />
+        <meshStandardMaterial color="#1f2029" roughness={0.35} metalness={0.2} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh key={side} position={[side * 0.062, 0.004, -0.045]} rotation={[0, side * -0.12, 0]}>
+          <boxGeometry args={[0.004, 0.005, 0.095]} />
+          <meshStandardMaterial color="#1f2029" roughness={0.35} metalness={0.2} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 type MotionRequest = { file: File; id: number }
 
-function Character({ hatColor, wearing, motionRequest, onMotionStatus }: {
+function Character({ hatColor, wearing, wearingGlasses, motionRequest, onMotionStatus }: {
   hatColor: string
   wearing: boolean
+  wearingGlasses: boolean
   motionRequest: MotionRequest | null
   onMotionStatus: (message: string) => void
 }) {
@@ -187,13 +217,15 @@ function Character({ hatColor, wearing, motionRequest, onMotionStatus }: {
     <group ref={character}>
       <primitive object={vrm.scene} />
       {head && wearing && createPortal(<HipHopCap color={hatColor} />, head)}
+      {head && wearingGlasses && createPortal(<Sunglasses />, head)}
     </group>
   )
 }
 
-export default function Avatar({ hatColor, wearing, motionRequest, onMotionStatus }: {
+export default function Avatar({ hatColor, wearing, wearingGlasses, motionRequest, onMotionStatus }: {
   hatColor: string
   wearing: boolean
+  wearingGlasses: boolean
   motionRequest: MotionRequest | null
   onMotionStatus: (message: string) => void
 }) {
@@ -204,7 +236,7 @@ export default function Avatar({ hatColor, wearing, motionRequest, onMotionStatu
       <directionalLight position={[-3, 5, 5]} intensity={2.5} castShadow />
       <directionalLight position={[4, 1, -3]} intensity={1.5} color="#ffc4a4" />
       <Suspense fallback={null}>
-        <Character hatColor={hatColor} wearing={wearing} motionRequest={motionRequest} onMotionStatus={onMotionStatus} />
+        <Character hatColor={hatColor} wearing={wearing} wearingGlasses={wearingGlasses} motionRequest={motionRequest} onMotionStatus={onMotionStatus} />
       </Suspense>
     </Canvas>
   )

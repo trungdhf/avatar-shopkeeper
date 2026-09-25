@@ -13,8 +13,10 @@ const colors = [
 const answers = [
   { question: 'Will it fit?', reply: 'Made for Mochi! Try it on and watch the cap follow my moves.' },
   { question: 'What do I get?', reply: 'One onchain unlock for your wallet. All three cap colors are yours to wear here.' },
-  { question: 'Which network?', reply: 'Checkout is on Ethereum Sepolia. You will need a little Sepolia ETH for the cap and gas.' },
+  { question: 'Which network?', reply: 'Checkout is on Ethereum Sepolia. You will need a little Sepolia ETH for each accessory and gas.' },
 ]
+
+type Product = 'hat' | 'glasses'
 
 function walletClient() {
   if (!window.ethereum) throw new Error('Install an Ethereum wallet to check out.')
@@ -32,7 +34,10 @@ export default function App() {
   const [chainId, setChainId] = useState<number>()
   const [owned, setOwned] = useState(false)
   const [price, setPrice] = useState<bigint>()
-  const [busy, setBusy] = useState(false)
+  const [glassesPreview, setGlassesPreview] = useState(false)
+  const [glassesOwned, setGlassesOwned] = useState(false)
+  const [glassesPrice, setGlassesPrice] = useState<bigint>()
+  const [busy, setBusy] = useState<Product | null>(null)
   const [txHash, setTxHash] = useState<Hash>()
   const [notice, setNotice] = useState('')
   const [motionRequest, setMotionRequest] = useState<{ file: File; id: number } | null>(null)
@@ -45,6 +50,7 @@ export default function App() {
     const onAccountsChanged = (accounts: Address[]) => {
       setAccount(accounts[0])
       setOwned(false)
+      setGlassesOwned(false)
     }
     const onChainChanged = (id: string) => setChainId(Number(id))
     provider.on('accountsChanged', onAccountsChanged)
@@ -63,6 +69,9 @@ export default function App() {
     void publicClient.readContract({ address: storeAddress, abi: shopAbi, functionName: 'PRICE' })
       .then((value) => { if (active) setPrice(value) })
       .catch((error: unknown) => { if (active) setNotice(`Cannot read the store: ${errorMessage(error)}`) })
+    void publicClient.readContract({ address: storeAddress, abi: shopAbi, functionName: 'GLASSES_PRICE' })
+      .then((value) => { if (active) setGlassesPrice(value) })
+      .catch((error: unknown) => { if (active) setNotice(`Cannot read the store: ${errorMessage(error)}`) })
     return () => { active = false }
   }, [])
 
@@ -71,6 +80,9 @@ export default function App() {
     let active = true
     void publicClient.readContract({ address: storeAddress, abi: shopAbi, functionName: 'hasHat', args: [account] })
       .then((value) => { if (active) setOwned(value) })
+      .catch((error: unknown) => { if (active) setNotice(`Cannot check ownership: ${errorMessage(error)}`) })
+    void publicClient.readContract({ address: storeAddress, abi: shopAbi, functionName: 'hasGlasses', args: [account] })
+      .then((value) => { if (active) setGlassesOwned(value) })
       .catch((error: unknown) => { if (active) setNotice(`Cannot check ownership: ${errorMessage(error)}`) })
     return () => { active = false }
   }, [account])
@@ -92,17 +104,18 @@ export default function App() {
     }
   }
 
-  async function purchase() {
+  async function purchase(product: Product) {
     if (!account) {
       await connect()
       return
     }
-    if (!storeAddress || price === undefined) {
+    const value = product === 'hat' ? price : glassesPrice
+    if (!storeAddress || value === undefined) {
       setNotice('Checkout is not live yet. Set a deployed Sepolia store address first.')
       return
     }
     try {
-      setBusy(true)
+      setBusy(product)
       setTxHash(undefined)
       setNotice('Confirm the purchase in your wallet…')
       const client = walletClient()
@@ -113,10 +126,10 @@ export default function App() {
       const hash = await client.writeContract({
         address: storeAddress,
         abi: shopAbi,
-        functionName: 'purchaseHat',
+        functionName: product === 'hat' ? 'purchaseHat' : 'purchaseGlasses',
         account,
         chain: sepolia,
-        value: price,
+        value,
       })
       setTxHash(hash)
       setNotice('Transaction sent. Waiting for Sepolia confirmation…')
@@ -124,15 +137,21 @@ export default function App() {
       if (receipt.status !== 'success') throw new Error('Transaction reverted.')
       const [currentAccount] = await client.getAddresses()
       if (currentAccount?.toLowerCase() === account.toLowerCase()) {
-        setOwned(true)
-        setPreview(true)
+        if (product === 'hat') {
+          setOwned(true)
+          setPreview(true)
+        } else {
+          setGlassesOwned(true)
+          setGlassesPreview(true)
+        }
       }
-      setNotice('The cap is yours! It is now equipped on Mochi.')
-      setAnswer('Looking good! Your wallet now holds this cap unlock on Sepolia.')
+      const item = product === 'hat' ? 'cap' : 'shades'
+      setNotice(`The ${item} ${product === 'hat' ? 'is' : 'are'} yours! Now equipped on Mochi.`)
+      setAnswer(`Looking good! Your wallet now holds the ${item} unlock on Sepolia.`)
     } catch (error) {
       setNotice(errorMessage(error))
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
@@ -153,7 +172,7 @@ export default function App() {
         <section className="shop-grid" id="shop" aria-label="Avatar shop">
           <div className={`avatar-panel${motionStatus.startsWith('Playing') ? ' motion-playing' : ''}`}>
             <div className="stage-label"><span className="stage-pulse" /> LIVE TRY-ON <span className="stage-count">01 / 01</span></div>
-            <Avatar hatColor={color.hex} wearing={preview} motionRequest={motionRequest} onMotionStatus={setMotionStatus} />
+            <Avatar hatColor={color.hex} wearing={preview} wearingGlasses={glassesPreview} motionRequest={motionRequest} onMotionStatus={setMotionStatus} />
             <div className="stage-bottom"><span>✦ &nbsp; Say hi to Mochi</span><span>Move your cursor to say hello ↗</span></div>
             <div className="speech-bubble"><span className="sparkle">✳</span> {answer}</div>
           </div>
@@ -165,8 +184,13 @@ export default function App() {
             <div className="color-area"><div className="field-heading"><span>01 / PICK A CAP COLOR</span><strong>{color.name}</strong></div><div className="swatches">{colors.map((item) => <button key={item.name} type="button" className={`swatch ${color.name === item.name ? 'selected' : ''}`} style={{ '--swatch': item.hex } as React.CSSProperties} aria-label={`Select ${item.name}`} aria-pressed={color.name === item.name} onClick={() => { setColor(item); setPreview(true) }}><span /></button>)}</div></div>
             <div className="divider" />
             <div className="purchase-area"><div className="price-row"><div><span className="price-label">ONE-TIME UNLOCK</span><strong>{price === undefined ? '0.0001 ETH' : `${formatEther(price)} ETH`}</strong></div><span className="network-badge"><span /> SEPOLIA TESTNET</span></div>
-              <button className="buy-button" type="button" disabled={busy || owned} onClick={() => void purchase()}>{busy ? 'Processing…' : owned ? 'Owned by your wallet ✓' : !account ? 'Connect wallet to unlock ↗' : 'Unlock the cap ↗'}</button>
+              <button className="buy-button" type="button" disabled={busy !== null || owned} onClick={() => void purchase('hat')}>{busy === 'hat' ? 'Processing…' : owned ? 'Owned by your wallet ✓' : !account ? 'Connect wallet to unlock ↗' : 'Unlock the cap ↗'}</button>
               <button className="preview-button" type="button" onClick={() => setPreview((current) => !current)}>{preview ? 'Take off the cap' : owned ? 'Equip my cap' : 'Try it on for free'} <span>↗</span></button>
+              <div className="divider" />
+              <div className="glasses-product"><div className="field-heading"><span>02 / SHIBUYA SHADES</span><strong>{glassesPrice === undefined ? '0.0001 ETH' : `${formatEther(glassesPrice)} ETH`}</strong></div><p className="product-desc">Sakura-tinted sunglasses, sold as a separate unlock.</p></div>
+              <button className="buy-button" type="button" disabled={busy !== null || glassesOwned} onClick={() => void purchase('glasses')}>{busy === 'glasses' ? 'Processing…' : glassesOwned ? 'Shades owned by your wallet ✓' : !account ? 'Connect wallet to unlock ↗' : 'Unlock the shades ↗'}</button>
+              <button className="preview-button" type="button" onClick={() => setGlassesPreview((current) => !current)}>{glassesPreview ? 'Take off the shades' : glassesOwned ? 'Equip my shades' : 'Try the shades for free'} <span>↗</span></button>
+              <div className="divider" />
               <label className="motion-upload" htmlFor="motion-upload">Try an official VRoid motion (.vrma) ↗</label>
               <input id="motion-upload" className="motion-file" type="file" accept=".vrma" aria-label="Choose a VRoid motion file" onChange={(event) => {
                 const file = event.target.files?.[0]
@@ -175,7 +199,7 @@ export default function App() {
               }} />
               <p className="motion-note">Choose VRMA_03 (peace sign) for a friendly hello, or VRMA_05 (spin) from the <a href="https://booth.pm/ja/items/5512385" target="_blank" rel="noreferrer">free VRoid motion pack ↗</a>. Your file stays in this browser. Character animation credits to pixiv Inc.'s VRoid Project.</p>
               {motionStatus && <p role="status" className="motion-status">{motionStatus}</p>}
-              <p className="purchase-note">{owned ? 'Onchain unlock found for this wallet. All colors are yours.' : 'Preview for free. Buy once to unlock every color for this wallet.'}</p>
+              <p className="purchase-note">{owned ? 'Cap unlock found for this wallet. All colors are yours.' : 'Preview for free. The cap and shades are unlocked separately.'}{glassesOwned ? ' Shades unlock found.' : ''}</p>
               {!storeAddress && <p className="setup-note">Checkout opens after a Sepolia contract is deployed and configured.</p>}
               {chainId !== undefined && chainId !== sepolia.id && <p className="setup-note">Switch your wallet to Sepolia to check out.</p>}
               {notice && <p role="status" className="notice">{notice}</p>}

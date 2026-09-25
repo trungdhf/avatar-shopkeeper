@@ -2,6 +2,8 @@
 
 A tiny 3D shopkeeper for digital avatar accessories, built for ETHGlobal Tokyo 2026. Preview a hip-hop cap with an ETHGlobal Tokyo 2026 text patch in three colors on Trung's VRM avatar, then unlock all three for one wallet on Ethereum Sepolia. The cap is an in-app entitlement stored in `AvatarShop.hasHat`; it is **not** an NFT or exclusive ownership of the 3D mesh. The patch is an event-themed design, not an official ETHGlobal product or a claim of sponsorship.
 
+A second accessory, **Shibuya Shades** (sakura-tinted sunglasses), is sold separately: `GLASSES_PRICE()`, `hasGlasses(address)` and `purchaseGlasses()`. Cap and shades can be previewed, bought and equipped independently.
+
 Live preview: https://avatar-shopkeeper.vercel.app. The preview and color switcher work; checkout requires a deployed Sepolia contract and `VITE_STORE_ADDRESS` on Vercel. Until then, the live site displays a setup notice.
 
 To try VRoid Project's friendly peace sign or full-body spin, download the [free seven-motion pack](https://booth.pm/ja/items/5512385) from BOOTH, extract `VRMA_03.vrma` (Peace sign) or `VRMA_05.vrma` (Spin) and select it with **Try an official VRoid motion** on the shop page. The picker accepts other motions in the pack too, including `VRMA_02.vrma` (Greeting). The file is parsed in your browser and never uploaded. BOOTH's license permits use and testing but prohibits redistribution of extractable motion files; this project does not include or host them. Character animation credits to pixiv Inc.'s VRoid Project.
@@ -22,7 +24,7 @@ Open the URL printed by Vite. Preview and color selection work without a wallet.
 
 1. Open [Remix](https://remix.ethereum.org/), create a file named `AvatarShop.sol`, and paste in [`contracts/AvatarShop.sol`](contracts/AvatarShop.sol). Compile with Solidity `0.8.37` (or any compatible `0.8.24+` compiler).
 2. In **Deploy & Run Transactions**, select **Injected Provider**, switch your wallet to **Sepolia**, and deploy `AvatarShop`. The deploying wallet is the owner and can withdraw shop revenue. Keep some Sepolia ETH for gas.
-3. Copy the deployed contract address into `.env` as `VITE_STORE_ADDRESS=0x...`. Restart `npm run dev`. The app reads `PRICE()` and `hasHat(address)` from the contract, sends `purchaseHat()` with exactly `PRICE()` wei, waits for confirmation, and equips the cap.
+3. Copy the deployed contract address into `.env` as `VITE_STORE_ADDRESS=0x...`. Restart `npm run dev`. The app reads `PRICE()`/`GLASSES_PRICE()` and `hasHat(address)`/`hasGlasses(address)` from the contract, sends `purchaseHat()` or `purchaseGlasses()` with the exact price in wei, waits for confirmation, and equips the purchased accessory.
 4. For production, set `VITE_STORE_ADDRESS` (and optionally `VITE_SEPOLIA_RPC_URL`) in the static hosting provider's build environment. Build with `npm ci && npm run build`; serve the generated `dist` directory. Redeploy the site after setting the address. Do not put private keys in the repository or frontend environment variables.
 
 Use the [Sepolia explorer](https://sepolia.etherscan.io/) to check the deployment and purchase transaction. The default public RPC may rate-limit demos; supply a reliable Sepolia RPC URL if needed. `VITE_` variables are embedded in the public frontend and must never contain a secret.
@@ -37,7 +39,7 @@ npm run build
 npm audit
 ```
 
-The contract test compiles Solidity and executes real EVM calls in memory. It checks the exact price, rejection of underpayment and double purchase, independent ownership across wallets, event emission, and owner-only withdrawal. It does not replace a signed Sepolia purchase test.
+The contract test compiles Solidity and executes real EVM calls in memory. It checks the exact price, rejection of underpayment and double purchase, independent ownership across wallets, event emission, owner-only withdrawal, and that shades ownership is independent of the cap. It does not replace a signed Sepolia purchase test.
 
 ## Demo and submission
 
@@ -50,7 +52,7 @@ The shopkeeper's replies are scripted product guidance, not an AI agent. No Worl
 
 ## Attribution and project history
 
-- The default avatar `public/avatars/real2.vrm` is copied unchanged from [Trung's pre-existing chatbot3D project](https://github.com/trungdhf/chatbot3D/tree/d8726b908fb6d2d94ca225ccbc47d14339a45b00) with the owner's permission. Its VRM metadata names Trung as author and restricts redistribution and modification; publishing it here does not grant others permission to reuse the model. The original GLB's provenance should be described in the hackathon submission. The cap and shop visuals were made for this repository.
+- The default avatar `public/avatars/real2.vrm` is copied unchanged from [Trung's pre-existing chatbot3D project](https://github.com/trungdhf/chatbot3D/tree/d8726b908fb6d2d94ca225ccbc47d14339a45b00) with the owner's permission. Its VRM metadata names Trung as author and restricts redistribution and modification; publishing it here does not grant others permission to reuse the model. The original GLB's provenance should be described in the hackathon submission. The cap, shades and shop visuals were made for this repository.
 - The idle/head movement (`public/anims/LookAround.vrma`) is copied from [TK256's VRM Viewer](https://github.com/tk256ailab/vrm-viewer/tree/0cd2267f36939da589afc8eac449b5b9ccce4c01/VRMA), whose repository carries an MIT license (notice reproduced in `LICENSE`). Its README asks users to ensure they have rights to animations; no separate asset-level origin or license is documented there. The avatar's own VRM `blink` expression supplies the blink, rather than an external animation file. This external motion also predates this project. For a friendly shopkeeper gesture, select the official Peace sign clip locally; the bundled Goodbye and Relax motions were removed after their large arm movements did not suit this shopkeeper.
 - Reusing this pre-event avatar and these motions affects ETHGlobal track eligibility: do not present the project as entirely From Scratch. Choose a track that permits prior assets, or replace them with assets created during the event before submitting to From Scratch.
 - The application source is MIT-licensed (see `LICENSE`); the imported VRM avatar is excluded. React, Three.js, React Three Fiber, @pixiv/three-vrm, viem, Vite and Solidity compiler packages are open-source dependencies with their own licenses. No prior project-specific application code was copied into this repository.

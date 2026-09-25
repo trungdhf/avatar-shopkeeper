@@ -15,7 +15,7 @@ const output = JSON.parse(solc.compile(JSON.stringify({
 assert.deepEqual(output.errors?.filter((issue) => issue.severity === 'error') ?? [], [])
 const artifact = output.contracts['AvatarShop.sol'].AvatarShop
 
-test('a wallet buys one cap, other wallets remain independent, and only owner withdraws', async () => {
+async function deploy() {
   const evm = await createEVM()
   const owner = createAddressFromString('0x00000000000000000000000000000000000000a1')
   const buyer = createAddressFromString('0x00000000000000000000000000000000000000b2')
@@ -43,6 +43,12 @@ test('a wallet buys one cap, other wallets remain independent, and only owner wi
     assert.equal(result.execResult.exceptionError, undefined)
     return decodeFunctionResult({ abi: artifact.abi, functionName, data: bytesToHex(result.execResult.returnValue) })
   }
+
+  return { evm, owner, buyer, other, address, call, read }
+}
+
+test('a wallet buys one cap, other wallets remain independent, and only owner withdraws', async () => {
+  const { evm, owner, buyer, other, address, call, read } = await deploy()
 
   const price = await read(owner, 'PRICE')
   assert.equal(price, 100_000_000_000_000n)
@@ -75,4 +81,31 @@ test('a wallet buys one cap, other wallets remain independent, and only owner wi
   assert.equal(withdrawal.execResult.exceptionError, undefined)
   assert.equal((await evm.stateManager.getAccount(address)).balance, 0n)
   assert.equal((await evm.stateManager.getAccount(owner)).balance, ownerBefore + price * 2n)
+})
+
+test('glasses are a separate entitlement from the cap', async () => {
+  const { evm, owner, buyer, other, address, call, read } = await deploy()
+  const price = await read(owner, 'GLASSES_PRICE')
+  assert.equal(price, 100_000_000_000_000n)
+  assert.equal(await read(buyer, 'hasGlasses', [buyer.toString()]), false)
+
+  const overpaid = await call(buyer, 'purchaseGlasses', [], price + 1n)
+  assert.ok(overpaid.execResult.exceptionError)
+  assert.equal(await read(buyer, 'hasGlasses', [buyer.toString()]), false)
+
+  const purchased = await call(buyer, 'purchaseGlasses', [], price)
+  assert.equal(purchased.execResult.exceptionError, undefined)
+  assert.equal(purchased.execResult.logs?.length, 1)
+  assert.equal(await read(buyer, 'hasGlasses', [buyer.toString()]), true)
+  assert.equal(await read(buyer, 'hasHat', [buyer.toString()]), false)
+  assert.equal(await read(other, 'hasGlasses', [other.toString()]), false)
+
+  const duplicate = await call(buyer, 'purchaseGlasses', [], price)
+  assert.ok(duplicate.execResult.exceptionError)
+
+  const cap = await call(buyer, 'purchaseHat', [], await read(owner, 'PRICE'))
+  assert.equal(cap.execResult.exceptionError, undefined)
+  assert.equal(await read(buyer, 'hasHat', [buyer.toString()]), true)
+  assert.equal(await read(buyer, 'hasGlasses', [buyer.toString()]), true)
+  assert.equal((await evm.stateManager.getAccount(address)).balance, price * 2n)
 })
