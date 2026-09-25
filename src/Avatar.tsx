@@ -1,6 +1,6 @@
 import { Canvas, useFrame } from '@react-three/fiber'
 import { useRef } from 'react'
-import type { Group } from 'three'
+import { DoubleSide, type Group } from 'three'
 
 function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }) {
   const character = useRef<Group>(null)
@@ -81,10 +81,10 @@ function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }
         <group position={[0, 0.94, 0.02]} rotation={[-0.11, 0, 0]}>
           <mesh castShadow>
             <sphereGeometry args={[0.79, 36, 24, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshStandardMaterial color={hatColor} roughness={0.7} side={2} />
+            <meshStandardMaterial color={hatColor} roughness={0.7} side={DoubleSide} />
           </mesh>
-          <mesh position={[0, 0.02, 0.59]} rotation={[0.18, 0, 0]} castShadow>
-            <sphereGeometry args={[0.66, 0.055, 0.38, 28]} />
+          <mesh position={[0, 0.02, 0.59]} rotation={[0.18, 0, 0]} scale={[0.66, 0.055, 0.38]} castShadow>
+            <sphereGeometry args={[1, 28, 16]} />
             <meshStandardMaterial color={hatColor} roughness={0.7} />
           </mesh>
           <mesh position={[0, 0.52, 0.57]}>
@@ -99,7 +99,7 @@ function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }
 
 export default function Avatar({ hatColor, wearing }: { hatColor: string; wearing: boolean }) {
   return (
-    <Canvas camera={{ position: [0, 0, 7.1], fov: 42 }} shadows dpr={[1, 2]}>
+    <Canvas camera={{ position: [0, -0.55, 8.4], fov: 42 }} shadows dpr={[1, 2]}>
       <color attach="background" args={['#efe9de']} />
       <ambientLight intensity={2.2} />
       <directionalLight position={[-3, 5, 5]} intensity={2.5} castShadow />
