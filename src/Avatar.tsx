@@ -47,7 +47,7 @@ function HipHopCap({ color }: { color: string }) {
   useEffect(() => () => patchSurface.dispose(), [patchSurface])
 
   return (
-    <group position={[0, 0.1, 0.005]}>
+    <group position={[0, 0.085, 0.005]} scale={0.86}>
       <mesh position={[0, 0, 0.025]} scale={[1.08, 1.05, 1.55]} castShadow>
         <sphereGeometry args={[0.105, 36, 24, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshStandardMaterial color={color} roughness={0.8} side={DoubleSide} />
