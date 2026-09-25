@@ -6,17 +6,17 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 function Cap({ color }: { color: string }) {
   return (
-    <group position={[0, 0.19, 0.005]}>
+    <group position={[0, 0.1, 0.005]}>
       <mesh castShadow>
-        <sphereGeometry args={[0.13, 36, 24, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <sphereGeometry args={[0.105, 36, 24, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshStandardMaterial color={color} roughness={0.7} side={DoubleSide} />
       </mesh>
-      <mesh position={[0, 0, 0.12]} rotation={[0.18, 0, 0]} scale={[0.15, 0.012, 0.09]} castShadow>
+      <mesh position={[0, 0, 0.09]} rotation={[0.18, 0, 0]} scale={[0.12, 0.009, 0.07]} castShadow>
         <sphereGeometry args={[1, 28, 16]} />
         <meshStandardMaterial color={color} roughness={0.7} />
       </mesh>
-      <mesh position={[0, 0.085, 0.1]}>
-        <sphereGeometry args={[0.02, 16, 12]} />
+      <mesh position={[0, 0.07, 0.085]}>
+        <sphereGeometry args={[0.015, 16, 12]} />
         <meshStandardMaterial color="#fff7e6" />
       </mesh>
     </group>
