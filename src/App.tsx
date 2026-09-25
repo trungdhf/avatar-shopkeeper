@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createWalletClient, custom, formatEther, type Address } from 'viem'
+import { createWalletClient, custom, formatEther, type Address, type Hash } from 'viem'
 import { sepolia } from 'viem/chains'
 import Avatar from './Avatar'
 import { publicClient, shopAbi, storeAddress } from './shop'
@@ -33,6 +33,7 @@ export default function App() {
   const [owned, setOwned] = useState(false)
   const [price, setPrice] = useState<bigint>()
   const [busy, setBusy] = useState(false)
+  const [txHash, setTxHash] = useState<Hash>()
   const [notice, setNotice] = useState('')
   const [answer, setAnswer] = useState('Hi! I’m Mochi. Pick a color and try on my favorite cap.')
 
@@ -100,6 +101,7 @@ export default function App() {
     }
     try {
       setBusy(true)
+      setTxHash(undefined)
       setNotice('Confirm the purchase in your wallet…')
       const client = walletClient()
       if (await client.getChainId() !== sepolia.id) {
@@ -114,11 +116,15 @@ export default function App() {
         chain: sepolia,
         value: price,
       })
+      setTxHash(hash)
       setNotice('Transaction sent. Waiting for Sepolia confirmation…')
       const receipt = await publicClient.waitForTransactionReceipt({ hash })
       if (receipt.status !== 'success') throw new Error('Transaction reverted.')
-      setOwned(true)
-      setPreview(true)
+      const [currentAccount] = await client.getAddresses()
+      if (currentAccount?.toLowerCase() === account.toLowerCase()) {
+        setOwned(true)
+        setPreview(true)
+      }
       setNotice('The Tokyo Cap is yours! It is now equipped on Mochi.')
       setAnswer('Looking good! Your wallet now holds this cap unlock on Sepolia.')
     } catch (error) {
@@ -163,6 +169,7 @@ export default function App() {
               {!storeAddress && <p className="setup-note">Checkout opens after a Sepolia contract is deployed and configured.</p>}
               {chainId !== undefined && chainId !== sepolia.id && <p className="setup-note">Switch your wallet to Sepolia to check out.</p>}
               {notice && <p role="status" className="notice">{notice}</p>}
+              {txHash && <a className="transaction-link" href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noreferrer">View transaction on Sepolia ↗</a>}
             </div>
           </div>
         </section>
