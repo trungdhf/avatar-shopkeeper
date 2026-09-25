@@ -160,6 +160,7 @@ function Character({ hatColor, wearing, motionRequest, onMotionStatus }: {
       selectedAction.current.time >= selectedAction.current.getClip().duration - 0.4) {
       motion.idle.reset().play().crossFadeFrom(selectedAction.current, 0.4, false)
       selectedActive.current = false
+      onMotionStatus('Motion played locally. Choose another file to replay.')
     }
     const fullBodyDistance = 1.5 / (Math.tan(14 * Math.PI / 180) * (size.width / size.height))
     const targetDistance = selectedActive.current ? Math.max(5.6, fullBodyDistance) : 3.4
