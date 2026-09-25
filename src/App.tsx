@@ -11,9 +11,9 @@ const colors = [
 ]
 
 const answers = [
-  { question: 'Will it fit?', reply: 'Made for Mochi! Try it on and see how the cap moves with your avatar.' },
-  { question: 'What do I get?', reply: 'One onchain unlock for your wallet. All three cap colors are yours to wear here.' },
-  { question: 'Which network?', reply: 'Checkout is on Ethereum Sepolia. You will need a little Sepolia ETH for the cap and gas.' },
+  { question: 'Will it fit?', reply: 'Made for Mochi! Try it on and see how the nón lá moves with your avatar.' },
+  { question: 'What do I get?', reply: 'One onchain unlock for your wallet. All three nón lá trims are yours to wear here.' },
+  { question: 'Which network?', reply: 'Checkout is on Ethereum Sepolia. You will need a little Sepolia ETH for the nón lá and gas.' },
 ]
 
 function walletClient() {
@@ -35,7 +35,7 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [txHash, setTxHash] = useState<Hash>()
   const [notice, setNotice] = useState('')
-  const [answer, setAnswer] = useState('Hi! I’m Mochi. Pick a color and try on my favorite cap.')
+  const [answer, setAnswer] = useState('Hi! I’m Mochi. Pick a trim color and try on my Vietnamese nón lá.')
 
   useEffect(() => {
     if (!window.ethereum) return
@@ -125,8 +125,8 @@ export default function App() {
         setOwned(true)
         setPreview(true)
       }
-      setNotice('The Tokyo Cap is yours! It is now equipped on Mochi.')
-      setAnswer('Looking good! Your wallet now holds this cap unlock on Sepolia.')
+      setNotice('The nón lá is yours! It is now equipped on Mochi.')
+      setAnswer('Looking good! Your wallet now holds this nón lá unlock on Sepolia.')
     } catch (error) {
       setNotice(errorMessage(error))
     } finally {
@@ -158,13 +158,13 @@ export default function App() {
 
           <div className="details-panel">
             <div className="product-top"><span className="pill">DIGITAL ACCESSORY</span><span className="product-index">NO. 001 — TOKYO EDITION</span></div>
-            <div><p className="product-kicker">THE FIRST DROP</p><h2>Tokyo Cap<span className="period">.</span></h2><p className="product-desc">A little souvenir for your digital self. One unlock, three shades, endless good vibes.</p></div>
+            <div><p className="product-kicker">THE FIRST DROP</p><h2>Nón Lá<span className="period">.</span></h2><p className="product-desc">A Vietnamese conical hat for your digital self. One unlock, three trim colors, endless good vibes.</p></div>
             <div className="divider" />
-            <div className="color-area"><div className="field-heading"><span>01 / PICK A COLOR</span><strong>{color.name}</strong></div><div className="swatches">{colors.map((item) => <button key={item.name} type="button" className={`swatch ${color.name === item.name ? 'selected' : ''}`} style={{ '--swatch': item.hex } as React.CSSProperties} aria-label={`Select ${item.name}`} aria-pressed={color.name === item.name} onClick={() => { setColor(item); setPreview(true) }}><span /></button>)}</div></div>
+            <div className="color-area"><div className="field-heading"><span>01 / PICK A TRIM COLOR</span><strong>{color.name}</strong></div><div className="swatches">{colors.map((item) => <button key={item.name} type="button" className={`swatch ${color.name === item.name ? 'selected' : ''}`} style={{ '--swatch': item.hex } as React.CSSProperties} aria-label={`Select ${item.name}`} aria-pressed={color.name === item.name} onClick={() => { setColor(item); setPreview(true) }}><span /></button>)}</div></div>
             <div className="divider" />
             <div className="purchase-area"><div className="price-row"><div><span className="price-label">ONE-TIME UNLOCK</span><strong>{price === undefined ? '0.0001 ETH' : `${formatEther(price)} ETH`}</strong></div><span className="network-badge"><span /> SEPOLIA TESTNET</span></div>
-              <button className="buy-button" type="button" disabled={busy || owned} onClick={() => void purchase()}>{busy ? 'Processing…' : owned ? 'Owned by your wallet ✓' : !account ? 'Connect wallet to unlock ↗' : 'Unlock this cap ↗'}</button>
-              <button className="preview-button" type="button" onClick={() => setPreview((current) => !current)}>{preview ? 'Take off the cap' : owned ? 'Equip my cap' : 'Try it on for free'} <span>↗</span></button>
+              <button className="buy-button" type="button" disabled={busy || owned} onClick={() => void purchase()}>{busy ? 'Processing…' : owned ? 'Owned by your wallet ✓' : !account ? 'Connect wallet to unlock ↗' : 'Unlock the nón lá ↗'}</button>
+              <button className="preview-button" type="button" onClick={() => setPreview((current) => !current)}>{preview ? 'Take off the nón lá' : owned ? 'Equip my nón lá' : 'Try it on for free'} <span>↗</span></button>
               <p className="purchase-note">{owned ? 'Onchain unlock found for this wallet. All colors are yours.' : 'Preview for free. Buy once to unlock every color for this wallet.'}</p>
               {!storeAddress && <p className="setup-note">Checkout opens after a Sepolia contract is deployed and configured.</p>}
               {chainId !== undefined && chainId !== sepolia.id && <p className="setup-note">Switch your wallet to Sepolia to check out.</p>}
@@ -175,7 +175,7 @@ export default function App() {
         </section>
 
         <section className="conversation" aria-label="Ask Mochi"><div><span className="conversation-icon">✳</span><div><strong>Ask Mochi anything</strong><p>Your shopkeeper has the answers.</p></div></div><div className="question-list">{answers.map((item) => <button type="button" key={item.question} onClick={() => setAnswer(item.reply)}>{item.question} <span>↗</span></button>)}</div></section>
-        <section className="how" id="how-it-works"><span className="section-caption">THE MOCHI WAY</span><h2>Little things. Big personality.</h2><div className="steps"><div><span>01</span><strong>Meet Mochi</strong><p>A friendly face, a new look, and a tiny store built around your avatar.</p></div><div><span>02</span><strong>Try your style</strong><p>Preview the cap in 3D. Swap between three colors, no wallet needed.</p></div><div><span>03</span><strong>Make it yours</strong><p>Unlock the cap on Sepolia and equip it whenever you return with your wallet.</p></div></div></section>
+        <section className="how" id="how-it-works"><span className="section-caption">THE MOCHI WAY</span><h2>Little things. Big personality.</h2><div className="steps"><div><span>01</span><strong>Meet Mochi</strong><p>A friendly face, a new look, and a tiny store built around your avatar.</p></div><div><span>02</span><strong>Try your style</strong><p>Preview the nón lá in 3D. Swap between three trim colors, no wallet needed.</p></div><div><span>03</span><strong>Make it yours</strong><p>Unlock the nón lá on Sepolia and equip it whenever you return with your wallet.</p></div></div></section>
       </main>
       <footer><span>MOCHI MART © 2026</span><span>MADE WITH ♥ FOR ETHGLOBAL TOKYO</span><a href="https://sepolia.etherscan.io/" target="_blank" rel="noreferrer">EXPLORE SEPOLIA ↗</a></footer>
     </div>

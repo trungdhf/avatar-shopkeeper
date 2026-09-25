@@ -4,20 +4,20 @@ import { Suspense, useLayoutEffect, useMemo, useRef } from 'react'
 import { DoubleSide, Vector3, type Group } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-function Cap({ color }: { color: string }) {
+function NonLa({ color }: { color: string }) {
   return (
-    <group position={[0, 0.1, 0.005]}>
-      <mesh position={[0, 0, 0.025]} scale={[1.08, 1.05, 1.55]} castShadow>
-        <sphereGeometry args={[0.105, 36, 24, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color={color} roughness={0.7} side={DoubleSide} />
+    <group position={[0, 0.1, 0.025]}>
+      <mesh position={[0, 0.115, 0]} castShadow>
+        <coneGeometry args={[0.19, 0.23, 48, 1, true]} />
+        <meshStandardMaterial color="#e9d4a5" roughness={0.95} side={DoubleSide} />
       </mesh>
-      <mesh position={[0, 0, 0.14]} rotation={[0.18, 0, 0]} scale={[0.12, 0.009, 0.08]} castShadow>
-        <sphereGeometry args={[1, 28, 16]} />
-        <meshStandardMaterial color={color} roughness={0.7} />
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.19, 0.009, 8, 48]} />
+        <meshStandardMaterial color={color} roughness={0.8} />
       </mesh>
-      <mesh position={[0, 0.07, 0.145]}>
-        <sphereGeometry args={[0.015, 16, 12]} />
-        <meshStandardMaterial color="#fff7e6" />
+      <mesh position={[0, 0.065, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.136, 0.004, 6, 48]} />
+        <meshStandardMaterial color={color} roughness={0.8} />
       </mesh>
     </group>
   )
@@ -77,14 +77,16 @@ function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }
       pose.leftArm.rotation.z = pose.leftArmRest.z - 1.2
     }
     if (pose.rightArm && pose.rightArmRest) {
-      pose.rightArm.rotation.y = pose.rightArmRest.y + wave * 1.15
-      pose.rightArm.rotation.z = pose.rightArmRest.z + 1.2 - wave * 1.1
+      pose.rightArm.rotation.y = pose.rightArmRest.y + wave * 1.3
+      pose.rightArm.rotation.z = pose.rightArmRest.z + 1.2 - wave * 0.75
     }
     if (pose.rightForearm && pose.rightForearmRest) {
-      pose.rightForearm.rotation.z = pose.rightForearmRest.z - wave * 1.1
+      pose.rightForearm.rotation.z = pose.rightForearmRest.z - wave * 1.4
     }
     if (pose.rightHand && pose.rightHandRest) {
-      pose.rightHand.rotation.z = pose.rightHandRest.z + wave * (0.18 + Math.sin(time * 13) * 0.27)
+      pose.rightHand.rotation.x = pose.rightHandRest.x + wave * 0.15
+      pose.rightHand.rotation.y = pose.rightHandRest.y + wave * (0.18 + Math.sin(time * 11) * 0.35)
+      pose.rightHand.rotation.z = pose.rightHandRest.z + wave * 0.1
     }
     const blinkTime = (time + 3) % 4.2
     const blink = blinkTime < 0.12 ? blinkTime / 0.12 : blinkTime < 0.2 ? 1 : Math.max(0, 1 - (blinkTime - 0.2) / 0.15)
@@ -95,7 +97,7 @@ function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }
   return (
     <group ref={character}>
       <primitive object={vrm.scene} />
-      {pose.head && wearing && createPortal(<Cap color={hatColor} />, pose.head)}
+      {pose.head && wearing && createPortal(<NonLa color={hatColor} />, pose.head)}
     </group>
   )
 }
