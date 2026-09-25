@@ -173,7 +173,7 @@ export default function App() {
                 if (file) setMotionRequest({ file, id: Date.now() })
                 event.target.value = ''
               }} />
-              <p className="motion-note">Choose VRMA_02 (greeting) or VRMA_05 (spin) from the <a href="https://booth.pm/ja/items/5512385" target="_blank" rel="noreferrer">free VRoid motion pack ↗</a>. Your file stays in this browser. Character animation credits to pixiv Inc.'s VRoid Project.</p>
+              <p className="motion-note">Choose VRMA_03 (peace sign) for a friendly hello, or VRMA_05 (spin) from the <a href="https://booth.pm/ja/items/5512385" target="_blank" rel="noreferrer">free VRoid motion pack ↗</a>. Your file stays in this browser. Character animation credits to pixiv Inc.'s VRoid Project.</p>
               {motionStatus && <p role="status" className="motion-status">{motionStatus}</p>}
               <p className="purchase-note">{owned ? 'Onchain unlock found for this wallet. All colors are yours.' : 'Preview for free. Buy once to unlock every color for this wallet.'}</p>
               {!storeAddress && <p className="setup-note">Checkout opens after a Sepolia contract is deployed and configured.</p>}
