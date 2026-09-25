@@ -2,6 +2,8 @@
 
 A tiny 3D shopkeeper for digital avatar accessories, built for ETHGlobal Tokyo 2026. Preview the Tokyo Cap in three colors, then unlock all three for one wallet on Ethereum Sepolia. The cap is an in-app entitlement stored in `AvatarShop.hasHat`; it is **not** an NFT or exclusive ownership of the 3D mesh.
 
+Live preview: https://avatar-shopkeeper.vercel.app. The preview and color switcher work; checkout requires a deployed Sepolia contract and `VITE_STORE_ADDRESS` on Vercel. Until then, the live site displays a setup notice.
+
 ## Run locally
 
 Requirements: Node.js 20.19+ and npm.
