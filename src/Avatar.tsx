@@ -2,7 +2,7 @@ import { Canvas, createPortal, useFrame, useLoader, useThree } from '@react-thre
 import { VRMLoaderPlugin, type VRM } from '@pixiv/three-vrm'
 import { createVRMAnimationClip, VRMAnimationLoaderPlugin, type VRMAnimation } from '@pixiv/three-vrm-animation'
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
-import { AnimationMixer, CanvasTexture, DoubleSide, LoopOnce, SRGBColorSpace, Vector3, type Group } from 'three'
+import { AnimationMixer, CanvasTexture, DoubleSide, LoopOnce, SRGBColorSpace, Vector3, type AnimationAction, type Group } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 function HipHopCap({ color }: { color: string }) {
@@ -46,7 +46,7 @@ function HipHopCap({ color }: { color: string }) {
         <sphereGeometry args={[1, 32, 16]} />
         <meshStandardMaterial color={color} roughness={0.75} />
       </mesh>
-      <mesh position={[0, 0.052, 0.15]} rotation={[-0.2, 0, 0]}>
+      <mesh position={[0, 0.068, 0.195]}>
         <planeGeometry args={[0.143, 0.064]} />
         <meshBasicMaterial map={patch} side={DoubleSide} />
       </mesh>
@@ -58,7 +58,14 @@ function HipHopCap({ color }: { color: string }) {
   )
 }
 
-function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }) {
+type SpinRequest = { file: File; id: number }
+
+function Character({ hatColor, wearing, spinRequest, onSpinStatus }: {
+  hatColor: string
+  wearing: boolean
+  spinRequest: SpinRequest | null
+  onSpinStatus: (message: string) => void
+}) {
   const character = useRef<Group>(null)
   const camera = useThree(({ camera }) => camera)
   const gltf = useLoader(GLTFLoader, '/avatars/real2.vrm', (loader) => {
@@ -81,6 +88,8 @@ function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }
   }, [vrm, idleGltf, greetingGltf])
   const greetingCycle = useRef(-1)
   const returningToIdle = useRef(false)
+  const spinAction = useRef<AnimationAction | null>(null)
+  const spinActive = useRef(false)
 
   useEffect(() => {
     motion.idle.play()
@@ -89,6 +98,42 @@ function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }
       motion.mixer.uncacheRoot(vrm.scene)
     }
   }, [motion, vrm])
+
+  useEffect(() => {
+    if (!spinRequest) return
+    let active = true
+    let clip: ReturnType<typeof createVRMAnimationClip> | undefined
+    onSpinStatus('Loading your VRoid motion…')
+    const loader = new GLTFLoader()
+    loader.register((parser) => new VRMAnimationLoaderPlugin(parser))
+    void spinRequest.file.arrayBuffer()
+      .then((buffer) => loader.parseAsync(buffer, ''))
+      .then((animationGltf) => {
+        if (!active) return
+        const animation = (animationGltf.userData.vrmAnimations as VRMAnimation[] | undefined)?.[0]
+        if (!animation) throw new Error('This file does not contain a VRM animation.')
+        clip = createVRMAnimationClip(animation, vrm)
+        const action = motion.mixer.clipAction(clip)
+        action.setLoop(LoopOnce, 1)
+        action.clampWhenFinished = true
+        motion.greeting.stop()
+        action.reset().play().crossFadeFrom(motion.idle, 0.4, false)
+        spinAction.current = action
+        spinActive.current = true
+        onSpinStatus('Playing your local motion. The file stays in your browser.')
+      })
+      .catch((error: unknown) => {
+        if (active) onSpinStatus(error instanceof Error ? `Could not play motion: ${error.message}` : 'Could not play this motion.')
+      })
+    return () => {
+      active = false
+      spinActive.current = false
+      spinAction.current?.stop()
+      spinAction.current = null
+      if (clip) motion.mixer.uncacheAction(clip, vrm.scene)
+      motion.idle.reset().play()
+    }
+  }, [spinRequest, motion, vrm, onSpinStatus])
 
   useLayoutEffect(() => {
     if (!head) return
@@ -104,14 +149,22 @@ function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }
     }
     const time = clock.elapsedTime
     const cycle = Math.floor(time / 9)
-    if (cycle !== greetingCycle.current) {
-      motion.greeting.reset().play().crossFadeFrom(motion.idle, 0.4, false)
+    if (spinActive.current && spinAction.current) {
       greetingCycle.current = cycle
-      returningToIdle.current = false
-    }
-    if (!returningToIdle.current && motion.greeting.time >= motion.greeting.getClip().duration - 0.5) {
-      motion.idle.reset().play().crossFadeFrom(motion.greeting, 0.4, false)
-      returningToIdle.current = true
+      if (spinAction.current.time >= spinAction.current.getClip().duration - 0.4) {
+        motion.idle.reset().play().crossFadeFrom(spinAction.current, 0.4, false)
+        spinActive.current = false
+      }
+    } else {
+      if (cycle !== greetingCycle.current) {
+        motion.greeting.reset().play().crossFadeFrom(motion.idle, 0.4, false)
+        greetingCycle.current = cycle
+        returningToIdle.current = false
+      }
+      if (!returningToIdle.current && motion.greeting.time >= motion.greeting.getClip().duration - 0.5) {
+        motion.idle.reset().play().crossFadeFrom(motion.greeting, 0.4, false)
+        returningToIdle.current = true
+      }
     }
     motion.mixer.update(delta)
     const blinkTime = (time + 3) % 4.2
@@ -128,7 +181,12 @@ function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }
   )
 }
 
-export default function Avatar({ hatColor, wearing }: { hatColor: string; wearing: boolean }) {
+export default function Avatar({ hatColor, wearing, spinRequest, onSpinStatus }: {
+  hatColor: string
+  wearing: boolean
+  spinRequest: SpinRequest | null
+  onSpinStatus: (message: string) => void
+}) {
   return (
     <Canvas camera={{ position: [0, 1.5, 3.4], fov: 28 }} shadows dpr={[1, 2]}>
       <color attach="background" args={['#efe9de']} />
@@ -136,7 +194,7 @@ export default function Avatar({ hatColor, wearing }: { hatColor: string; wearin
       <directionalLight position={[-3, 5, 5]} intensity={2.5} castShadow />
       <directionalLight position={[4, 1, -3]} intensity={1.5} color="#ffc4a4" />
       <Suspense fallback={null}>
-        <Character hatColor={hatColor} wearing={wearing} />
+        <Character hatColor={hatColor} wearing={wearing} spinRequest={spinRequest} onSpinStatus={onSpinStatus} />
       </Suspense>
     </Canvas>
   )

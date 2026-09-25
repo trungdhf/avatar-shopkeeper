@@ -4,6 +4,8 @@ A tiny 3D shopkeeper for digital avatar accessories, built for ETHGlobal Tokyo 2
 
 Live preview: https://avatar-shopkeeper.vercel.app. The preview and color switcher work; checkout requires a deployed Sepolia contract and `VITE_STORE_ADDRESS` on Vercel. Until then, the live site displays a setup notice.
 
+To try VRoid Project's full-body spin, download the [free seven-motion pack](https://booth.pm/ja/items/5512385) from BOOTH, extract `VRMA_05.vrma` and select it with **Try VRoid Spin** on the shop page. The file is parsed in your browser and never uploaded. BOOTH's license permits use and testing but prohibits redistribution of extractable motion files; this project does not include or host the spin file. Character animation credits to pixiv Inc.'s VRoid Project.
+
 ## Run locally
 
 Requirements: Node.js 20.19+ and npm.
