@@ -1,7 +1,7 @@
-import { Canvas, createPortal, useFrame, useLoader } from '@react-three/fiber'
+import { Canvas, createPortal, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { VRMLoaderPlugin, type VRM } from '@pixiv/three-vrm'
-import { Suspense, useRef } from 'react'
-import { DoubleSide, type Group } from 'three'
+import { Suspense, useLayoutEffect, useRef } from 'react'
+import { DoubleSide, Vector3, type Group } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 function Cap({ color }: { color: string }) {
@@ -25,11 +25,20 @@ function Cap({ color }: { color: string }) {
 
 function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }) {
   const character = useRef<Group>(null)
+  const camera = useThree(({ camera }) => camera)
   const gltf = useLoader(GLTFLoader, '/avatars/real2.vrm', (loader) => {
     loader.register((parser) => new VRMLoaderPlugin(parser))
   })
   const vrm = gltf.userData.vrm as VRM
   const head = vrm.humanoid.getNormalizedBoneNode('head')
+
+  useLayoutEffect(() => {
+    if (!head) return
+    vrm.scene.updateMatrixWorld(true)
+    const headY = head.getWorldPosition(new Vector3()).y
+    camera.position.set(0, headY - 0.35, 3.4)
+    camera.lookAt(0, headY - 0.4, 0)
+  }, [camera, head, vrm])
 
   useFrame(({ pointer }, delta) => {
     if (character.current) {
@@ -48,7 +57,7 @@ function Character({ hatColor, wearing }: { hatColor: string; wearing: boolean }
 
 export default function Avatar({ hatColor, wearing }: { hatColor: string; wearing: boolean }) {
   return (
-    <Canvas camera={{ position: [0, 1, 4.3], fov: 28 }} shadows dpr={[1, 2]}>
+    <Canvas camera={{ position: [0, 1.5, 3.4], fov: 28 }} shadows dpr={[1, 2]}>
       <color attach="background" args={['#efe9de']} />
       <ambientLight intensity={1.5} />
       <directionalLight position={[-3, 5, 5]} intensity={2.5} castShadow />
