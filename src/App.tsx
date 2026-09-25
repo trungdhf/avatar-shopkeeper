@@ -151,7 +151,7 @@ export default function App() {
         <div className="heading-row"><div><p className="overline">A SHOP WITH A PERSONALITY</p><h1>Meet your new<br /><em>favorite</em> look<span className="period">.</span></h1></div><p className="intro">Say hello to Mochi, your friendly 3D shopkeeper. Try it on, pick your color, and make it yours onchain.</p></div>
 
         <section className="shop-grid" id="shop" aria-label="Avatar shop">
-          <div className="avatar-panel">
+          <div className={`avatar-panel${motionStatus.startsWith('Playing') ? ' motion-playing' : ''}`}>
             <div className="stage-label"><span className="stage-pulse" /> LIVE TRY-ON <span className="stage-count">01 / 01</span></div>
             <Avatar hatColor={color.hex} wearing={preview} motionRequest={motionRequest} onMotionStatus={setMotionStatus} />
             <div className="stage-bottom"><span>✦ &nbsp; Say hi to Mochi</span><span>Move your cursor to say hello ↗</span></div>

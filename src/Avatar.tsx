@@ -99,6 +99,7 @@ function Character({ hatColor, wearing, motionRequest, onMotionStatus }: {
   }, [vrm, idleGltf])
   const selectedAction = useRef<AnimationAction | null>(null)
   const selectedActive = useRef(false)
+  const motionEndTime = useRef<number | null>(null)
 
   useEffect(() => {
     motion.idle.play()
@@ -112,6 +113,7 @@ function Character({ hatColor, wearing, motionRequest, onMotionStatus }: {
     if (!motionRequest) return
     let active = true
     let clip: ReturnType<typeof createVRMAnimationClip> | undefined
+    motionEndTime.current = null
     onMotionStatus('Loading your VRoid motion…')
     const loader = new GLTFLoader()
     loader.register((parser) => new VRMAnimationLoaderPlugin(parser))
@@ -136,6 +138,7 @@ function Character({ hatColor, wearing, motionRequest, onMotionStatus }: {
     return () => {
       active = false
       selectedActive.current = false
+      motionEndTime.current = null
       selectedAction.current?.stop()
       selectedAction.current = null
       if (clip) motion.mixer.uncacheAction(clip, vrm.scene)
@@ -160,6 +163,10 @@ function Character({ hatColor, wearing, motionRequest, onMotionStatus }: {
       selectedAction.current.time >= selectedAction.current.getClip().duration - 0.4) {
       motion.idle.reset().play().crossFadeFrom(selectedAction.current, 0.4, false)
       selectedActive.current = false
+      motionEndTime.current = time + 0.9
+    }
+    if (motionEndTime.current !== null && time >= motionEndTime.current) {
+      motionEndTime.current = null
       onMotionStatus('Motion played locally. Choose another file to replay.')
     }
     const fullBodyDistance = 1.5 / (Math.tan(14 * Math.PI / 180) * (size.width / size.height))
