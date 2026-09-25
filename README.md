@@ -1,6 +1,6 @@
 # Mochi Mart
 
-A tiny 3D shopkeeper for digital avatar accessories, built for ETHGlobal Tokyo 2026. Preview the Tokyo Cap in three colors, then unlock all three for one wallet on Ethereum Sepolia. The cap is an in-app entitlement stored in `AvatarShop.hasHat`; it is **not** an NFT or exclusive ownership of the 3D mesh.
+A tiny 3D shopkeeper for digital avatar accessories, built for ETHGlobal Tokyo 2026. Preview the Tokyo Cap in three colors on Trung's VRM avatar, then unlock all three for one wallet on Ethereum Sepolia. The cap is an in-app entitlement stored in `AvatarShop.hasHat`; it is **not** an NFT or exclusive ownership of the 3D mesh.
 
 Live preview: https://avatar-shopkeeper.vercel.app. The preview and color switcher work; checkout requires a deployed Sepolia contract and `VITE_STORE_ADDRESS` on Vercel. Until then, the live site displays a setup notice.
 
@@ -48,6 +48,7 @@ The shopkeeper's replies are scripted product guidance, not an AI agent. No Worl
 
 ## Attribution and project history
 
-- The avatar, cap, and shop visuals are procedural shapes and styling created for this repository; no external 3D model is bundled. The model is a placeholder that can be replaced with the participant's own work where track rules allow it.
-- React, Three.js, React Three Fiber, viem, Vite and Solidity compiler packages are open-source dependencies with their own licenses. No prior project-specific code was copied into this repository.
+- The default avatar `public/avatars/real2.vrm` is copied unchanged from [Trung's pre-existing chatbot3D project](https://github.com/trungdhf/chatbot3D/tree/d8726b908fb6d2d94ca225ccbc47d14339a45b00) with the owner's permission. Its VRM metadata names Trung as author and restricts redistribution and modification; publishing it here does not grant others permission to reuse the model. The original GLB's provenance should be described in the hackathon submission. The cap and shop visuals were made for this repository.
+- Reusing this pre-event avatar affects ETHGlobal track eligibility: do not present the project as entirely From Scratch. Choose a track that permits prior assets, or replace the avatar with one created during the event before submitting to From Scratch.
+- The application source is MIT-licensed (see `LICENSE`); the imported VRM avatar is excluded. React, Three.js, React Three Fiber, @pixiv/three-vrm, viem, Vite and Solidity compiler packages are open-source dependencies with their own licenses. No prior project-specific application code was copied into this repository.
 - Devin, an AI coding assistant, generated the initial application source, contract, tests and documentation from the participant's avatar shop concept during ETHGlobal Tokyo 2026. The participant must review, direct, test, present, and document their own contributions honestly in the final submission; AI assistance alone does not guarantee prize eligibility.
