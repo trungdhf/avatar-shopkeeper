@@ -27,6 +27,24 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message.split('\n')[0] : 'Something went wrong. Please try again.'
 }
 
+function isUnknownChain(error: unknown) {
+  for (let level: unknown = error, depth = 0; level && depth < 3; depth += 1) {
+    if ((level as { code?: unknown }).code === 4902) return true
+    level = (level as { cause?: unknown }).cause
+  }
+  return /unrecognized chain|unsupported chain|chain .*not been added/i.test(String(error))
+}
+
+async function switchToSepolia(client: ReturnType<typeof walletClient>) {
+  try {
+    await client.switchChain({ id: sepolia.id })
+  } catch (error) {
+    if (!isUnknownChain(error)) throw error
+    await client.addChain({ chain: sepolia })
+    await client.switchChain({ id: sepolia.id })
+  }
+}
+
 export default function App() {
   const [color, setColor] = useState(colors[0])
   const [preview, setPreview] = useState(true)
@@ -96,7 +114,7 @@ export default function App() {
       const network = await client.getChainId()
       setChainId(network)
       if (network !== sepolia.id) {
-        await client.switchChain({ id: sepolia.id })
+        await switchToSepolia(client)
         setChainId(sepolia.id)
       }
     } catch (error) {
@@ -120,7 +138,7 @@ export default function App() {
       setNotice('Confirm the purchase in your wallet…')
       const client = walletClient()
       if (await client.getChainId() !== sepolia.id) {
-        await client.switchChain({ id: sepolia.id })
+        await switchToSepolia(client)
         setChainId(sepolia.id)
       }
       const hash = await client.writeContract({
