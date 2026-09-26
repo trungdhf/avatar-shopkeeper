@@ -6,6 +6,8 @@ A 3D shop with a shopkeeper, built for ETHGlobal Tokyo 2026. Mochi stands beside
 
 Clicking a shelf item opens a small menu beside it. Sellable items can be added to a cart, which lives behind the **Cart** button in the header; prices and totals appear only once you open checkout. Because the contract exposes one function per item and has no batch entry point, paying for two items prompts the wallet twice. Ownership is read back from the contract, so a reload re-equips whatever the wallet holds.
 
+**Gifts.** Checkout has an optional **Gift to** field. With an address in it, the payer's wallet pays and the recipient receives the unlock (`purchaseHatFor(address)` / `purchaseGlassesFor(address)`). Before anything is signed, Intercepta screens both the paying wallet and the recipient; if either carries a blocking trait the payment is held and the reason is shown. The field appears only when the configured contract reports `VERSION() >= 2`, so a site pointed at the first deployment keeps working without it.
+
 Live site: https://avatar-shopkeeper.vercel.app. Contract on Sepolia: [`0xaaa682cac7bbb85ad96b209f6a18fde687018973`](https://sepolia.etherscan.io/address/0xaaa682cac7bbb85ad96b209f6a18fde687018973), price 0.0001 ETH per item. Try-on needs no wallet.
 
 To try VRoid Project's friendly peace sign or full-body spin, download the [free seven-motion pack](https://booth.pm/ja/items/5512385) from BOOTH, extract `VRMA_03.vrma` (Peace sign) or `VRMA_05.vrma` (Spin) and select it with **Play a VRoid motion** under the stage. The picker accepts other motions in the pack too, including `VRMA_02.vrma` (Greeting). Select several files at once for a runway show: they play back-to-back in file-name order, e.g. `VRMA_01` (Show full body) → `VRMA_05` (Spin) → `VRMA_06` (Model pose), then return to idle. The file is parsed in your browser and never uploaded. BOOTH's license permits use and testing but prohibits redistribution of extractable motion files; this project does not include or host them. Character animation credits to pixiv Inc.'s VRoid Project.
@@ -35,15 +37,21 @@ Two development-only environment hooks, both ignored by production builds:
 A contract is already deployed and wired to the live site, so this section is only needed to run your own.
 
 1. Open [Remix](https://remix.ethereum.org/), create a file named `AvatarShop.sol`, and paste in [`contracts/AvatarShop.sol`](contracts/AvatarShop.sol). Compile with Solidity `0.8.37` (or any compatible `0.8.24+` compiler).
-2. In **Deploy & Run Transactions**, select **Injected Provider**, switch your wallet to **Sepolia**, and deploy `AvatarShop`. The deploying wallet is the owner and can withdraw shop revenue. Keep some Sepolia ETH for gas.
+2. In **Deploy & Run Transactions**, select **Injected Provider**, switch your wallet to **Sepolia**, and deploy `AvatarShop`. (Version 2, with gifting, adds `VERSION`, `purchaseHatFor` and `purchaseGlassesFor`; the earlier deployment does not have them.) The deploying wallet is the owner and can withdraw shop revenue. Keep some Sepolia ETH for gas.
 3. Copy the deployed contract address into `.env` as `VITE_STORE_ADDRESS=0x...`. Restart `npm run dev`. The app reads `PRICE()`/`GLASSES_PRICE()` and `hasHat(address)`/`hasGlasses(address)` from the contract, sends `purchaseHat()` or `purchaseGlasses()` with the exact price in wei, waits for confirmation, and equips the purchased accessory.
 4. For production, set `VITE_STORE_ADDRESS` (and optionally `VITE_SEPOLIA_RPC_URL`) in the static hosting provider's build environment. Build with `npm ci && npm run build`; serve the generated `dist` directory. Redeploy the site after setting the address. Do not put private keys in the repository or frontend environment variables.
 
 Use the [Sepolia explorer](https://sepolia.etherscan.io/) to check the deployment and purchase transaction. The default public RPC may rate-limit demos; supply a reliable Sepolia RPC URL if needed. `VITE_` variables are embedded in the public frontend and must never contain a secret.
 
-## Destination screening
+## Payment screening (Intercepta)
 
-Opening checkout screens the **paying wallet** with [Intercepta](https://intercepta.io/) before it is asked to sign, using the deep [scan address](https://docs.web3antivirus.io/reference/scan-address) endpoint. The shallower `quick-scan` endpoint is deliberately not used: it answered 0 with no traits for every address tried, including the vendor's own documented sample, which the deep endpoint scores 10.36 with a phishing trait. A `sanction_address`, `known_scammer` or `blacklist` trait holds the payment; other traits are reported.
+Where the API is called:
+
+- [`api/screen.ts`](api/screen.ts) - `screenAddress()` calls the Intercepta / Web3 Antivirus scan-address endpoint and turns traits into a hold / pass verdict; the default export is the Vercel `/api/screen` route.
+- [`vite.config.ts`](vite.config.ts) - `devScreen()` serves the same route under `npm run dev`.
+- [`src/App.tsx`](src/App.tsx) - the two `useEffect` hooks that fetch `/api/screen` for the paying wallet and the gift recipient when checkout opens, `ScreenRow` which shows the verdict, and the pay button, which stays disabled while screening is pending and shows *Held: … flagged* when a blocking trait comes back.
+
+Opening checkout screens the **paying wallet**, and the **gift recipient** when one is entered, with [Intercepta](https://intercepta.io/) before it is asked to sign, using the deep [scan address](https://docs.web3antivirus.io/reference/scan-address) endpoint. The shallower `quick-scan` endpoint is deliberately not used: it answered 0 with no traits for every address tried, including the vendor's own documented sample, which the deep endpoint scores 10.36 with a phishing trait. A `sanction_address`, `known_scammer` or `blacklist` trait holds the payment; other traits are reported.
 
 It screens the wallet rather than the shop contract on purpose. The provider indexes Ethereum mainnet, so an address deployed only on Sepolia returns a score of 0 with no traits: absent data rather than a clean result, which would make the check a gate that can never close. A wallet address is the same on every chain, so its mainnet history is real signal. `toxicScore` is displayed but never used as a threshold, because probing the live API showed it is a float on an undocumented scale where low values are ordinary, and a zero means the address has no mainnet history at all.
 
@@ -66,11 +74,20 @@ The contract test compiles Solidity and executes real EVM calls in memory. It ch
 ## Demo and submission
 
 1. Click hats, eyewear and tees on the shelf; Mochi puts each one on, greets you with silent lip sync, and the menu marks which styles are try-on only. No wallet needed.
-2. Connect a funded Sepolia wallet, add the cowboy hat and the shades to the cart, open checkout to reveal the total, and pay. Show the confirmed transactions in the explorer.
+2. Connect a funded Sepolia wallet, add the cowboy hat and the shades to the cart, open checkout to reveal the total, and pay. Intercepta screens the wallet first and shows its verdict. Show the confirmed transactions in the explorer.
 3. Reload the page: ownership is read from the contract and both items come back on, with no wallet prompt.
-4. Submit the live site, this public repository, and a narrated 2–4 minute screen recording in the ETHGlobal Hacker Dashboard before **09:00 JST, Sunday 27 September 2026**. The venue finalist slide lists the video and live app as requirements. Present live if invited.
+4. Held payment: add an item, open checkout and paste a risky mainnet address from the test list pinned in Intercepta's ETHGlobal Discord channel into **Gift to**. The recipient row turns red with the trait names and the button reads *Held: gift recipient flagged*. Replace it with a clean address that has mainnet history and the gift goes through.
+5. Submit the live site, this public repository, and a narrated 2–4 minute screen recording in the ETHGlobal Hacker Dashboard before **09:00 JST, Sunday 27 September 2026**. The venue finalist slide lists the video and live app as requirements. Present live if invited.
 
-The shopkeeper's replies are scripted product guidance, not an AI agent, and the lip sync is a vowel-to-viseme mapping over that text rather than speech recognition or audio. Intercepta screens the payment destination at checkout, as described above. No World, ENS, Sui, Uniswap or 1inch SDK is integrated; do not select those partner prizes unless a qualifying integration is implemented, and check each partner's own definition of a qualifying integration before selecting it. ETHGlobal permits selecting up to three partner prizes, and partner details should be checked again before submission.
+The shopkeeper's replies are scripted product guidance, not an AI agent, and the lip sync is a vowel-to-viseme mapping over that text rather than speech recognition or audio. Intercepta screens the paying wallet and any gift recipient at checkout, as described above. No World, ENS, Sui, Uniswap or 1inch SDK is integrated; do not select those partner prizes unless a qualifying integration is implemented, and check each partner's own definition of a qualifying integration before selecting it. ETHGlobal permits selecting up to three partner prizes, and partner details should be checked again before submission.
+
+## Intercepta API feedback
+
+<!-- TODO(Trung): review and edit these in your own words before submitting. -->
+- Time to first call: TODO minutes from receiving the key to the first successful response.
+- Confusing: `quick-scan` returned 0 with no traits for every address we tried, including the documented sample that the deep scan scores 10.36, so it was unclear what quick-scan is for.
+- Confusing: `toxicScore` is a float with no documented scale, so we could not pick a threshold and decide on trait names instead.
+- Missing: a way to tell "no mainnet history" apart from "clean", and testnet coverage, since hackathon contracts live on Sepolia.
 
 ## Attribution and project history
 
