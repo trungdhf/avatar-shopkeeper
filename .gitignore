@@ -7,3 +7,4 @@ coverage/
 *.tsbuildinfo
 .vercel
 deploy.local.mjs
+dev-motions/
