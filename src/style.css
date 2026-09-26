@@ -54,3 +54,4 @@ body{overflow-x:clip}
 .screen-row.blocked{color:#8f3a2c;background:#fdeee9}
 .screen-row .price-label{color:inherit;opacity:.75}
 .screen-flags li{font-size:11px;color:#8f3a2c}
+.gift-field{display:flex;flex-direction:column;gap:6px;margin:14px 0 10px}.gift-field input{font:inherit;font-size:12px;border:1px solid #e5e1d9;border-radius:8px;padding:10px;background:#fff;color:#292a31;width:100%}.gift-field input:focus{outline:2px solid #f1a08e;border-color:transparent}.gift-error{font-size:11px;color:#8f3a2c}

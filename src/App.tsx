@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createWalletClient, custom, formatEther, type Address, type Hash } from 'viem'
+import { createWalletClient, custom, formatEther, isAddress, type Address, type Hash } from 'viem'
 import { sepolia } from 'viem/chains'
 import Avatar, { say, speech, type ShelfItem, type Sku } from './Avatar'
 // Type only: erased at build time, so no server code reaches the bundle.
@@ -47,6 +47,36 @@ async function switchToSepolia(client: ReturnType<typeof walletClient>) {
   }
 }
 
+// One Intercepta verdict, shown in the checkout before anything is signed.
+function ScreenRow({ label, address, result }: { label: string; address?: Address; result: Screening | null }) {
+  const blocked = result?.state === 'ok' && result.blocked
+  return (
+    <>
+      <div className={`screen-row${blocked ? ' blocked' : ''}`}>
+        <span className="price-label">{label} · INTERCEPTA SCREENING</span>
+        {!address && <span>Connect a wallet to screen it</span>}
+        {address && result === null && <span>Checking {address.slice(0, 6)}…{address.slice(-4)}...</span>}
+        {result?.state === 'skipped' && <span>Not configured</span>}
+        {result?.state === 'error' && <span>Unavailable: {result.reason}</span>}
+        {result?.state === 'ok' && (
+          <span>
+            {blocked ? 'Flagged, payment held' : 'No blocking flags'}
+            {result.score !== null ? ` - risk score ${result.score}` : ''}
+            {result.score === 0 && result.flags.length === 0 ? ', no mainnet history on this address' : ''}
+          </span>
+        )}
+      </div>
+      {result?.state === 'ok' && result.flags.length > 0 && (
+        <ul className="cart-list screen-flags">
+          {result.flags.map((flag) => (
+            <li key={flag.name} title={flag.description}><span>{flag.name.replace(/_/g, ' ')}</span><span>risk {flag.risk}</span></li>
+          ))}
+        </ul>
+      )}
+    </>
+  )
+}
+
 export default function App() {
   const [color] = useState(colors[0])
   const [preview, setPreview] = useState(true)
@@ -68,6 +98,10 @@ export default function App() {
   const [checkingOut, setCheckingOut] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const [screening, setScreening] = useState<Screening | null>(null)
+  // Gifting needs the version 2 contract; the first deployment has no VERSION.
+  const [giftsEnabled, setGiftsEnabled] = useState(false)
+  const [giftTo, setGiftTo] = useState('')
+  const [recipientScreening, setRecipientScreening] = useState<Screening | null>(null)
 
   // Development only recording aid: chain local VRoid motions as the idle loop.
   // DEV gates it and /dev-motions exists only under the dev server, so a build
@@ -135,6 +169,9 @@ export default function App() {
     void publicClient.readContract({ address: storeAddress, abi: shopAbi, functionName: 'PRICE' })
       .then((value) => { if (active) setPrice(value) })
       .catch((error: unknown) => { if (active) setNotice(`Cannot read the store: ${errorMessage(error)}`) })
+    void publicClient.readContract({ address: storeAddress, abi: shopAbi, functionName: 'VERSION' })
+      .then((value) => { if (active) setGiftsEnabled(value >= 2n) })
+      .catch(() => { if (active) setGiftsEnabled(false) })
     void publicClient.readContract({ address: storeAddress, abi: shopAbi, functionName: 'GLASSES_PRICE' })
       .then((value) => { if (active) setGlassesPrice(value) })
       .catch((error: unknown) => { if (active) setNotice(`Cannot read the store: ${errorMessage(error)}`) })
@@ -187,7 +224,30 @@ export default function App() {
     return () => { alive = false }
   }, [checkingOut, account])
 
-  const screenBlocked = screening?.state === 'ok' && screening.blocked
+  // A gift recipient is where the value lands, so it is screened too, and it is
+  // the check most likely to bite: anyone can type any address into the field.
+  const giftText = giftTo.trim()
+  const recipient = giftsEnabled && isAddress(giftText) ? giftText as Address : undefined
+  const giftInvalid = giftsEnabled && giftText.length > 0 && !recipient
+  useEffect(() => {
+    setRecipientScreening(null)
+    if (!checkingOut || !recipient) return
+    let alive = true
+    void fetch(`/api/screen?address=${recipient}`)
+      .then((response) => response.json() as Promise<Screening>)
+      .then((result) => { if (alive) setRecipientScreening(result) })
+      .catch(() => { if (alive) setRecipientScreening({ state: 'error', reason: 'Screening route unreachable' }) })
+    return () => { alive = false }
+  }, [checkingOut, recipient])
+
+  const payerBlocked = screening?.state === 'ok' && screening.blocked
+  const recipientBlocked = recipientScreening?.state === 'ok' && recipientScreening.blocked
+  const screenBlocked = payerBlocked || recipientBlocked
+  // Nothing is signed until every screen that applies has answered.
+  const screenPending = (account !== undefined && screening === null) || (recipient !== undefined && recipientScreening === null)
+  const heldReason = payerBlocked
+    ? 'Held: paying wallet flagged'
+    : recipientBlocked ? 'Held: gift recipient flagged' : ''
 
   const skuPrice = (sku: Sku) => (sku === 'hat' ? price : glassesPrice)
   const skuLabel = (sku: Sku) => (sku === 'hat' ? 'Tokyo Cowboy hat' : 'Shibuya Shades')
@@ -212,25 +272,33 @@ export default function App() {
       setNotice('Checkout is not live yet. Set a deployed Sepolia store address first.')
       return
     }
+    if (giftInvalid) {
+      setNotice('The gift address is not a valid 0x address.')
+      return
+    }
+    if (screenBlocked || screenPending) return
+    const to = recipient
+    const holder = to ?? account
     for (const sku of [...cart]) {
       const already = await publicClient.readContract({
         address: storeAddress,
         abi: shopAbi,
         functionName: sku === 'hat' ? 'hasHat' : 'hasGlasses',
-        args: [account],
+        args: [holder],
       })
       if (already) {
         setCart((current) => current.filter((item) => item !== sku))
         continue
       }
-      const done = await purchase(sku)
+      const done = await purchase(sku, to)
       if (!done) return
       setCart((current) => current.filter((item) => item !== sku))
     }
     setCheckingOut(false)
+    if (to) setGiftTo('')
   }
 
-  async function purchase(product: Product): Promise<boolean> {
+  async function purchase(product: Product, to?: Address): Promise<boolean> {
     if (!account) {
       await connect()
       return false
@@ -249,14 +317,24 @@ export default function App() {
         await switchToSepolia(client)
         setChainId(sepolia.id)
       }
-      const hash = await client.writeContract({
-        address: storeAddress,
-        abi: shopAbi,
-        functionName: product === 'hat' ? 'purchaseHat' : 'purchaseGlasses',
-        account,
-        chain: sepolia,
-        value,
-      })
+      const hash = to
+        ? await client.writeContract({
+          address: storeAddress,
+          abi: shopAbi,
+          functionName: product === 'hat' ? 'purchaseHatFor' : 'purchaseGlassesFor',
+          args: [to],
+          account,
+          chain: sepolia,
+          value,
+        })
+        : await client.writeContract({
+          address: storeAddress,
+          abi: shopAbi,
+          functionName: product === 'hat' ? 'purchaseHat' : 'purchaseGlasses',
+          account,
+          chain: sepolia,
+          value,
+        })
       setTxHash(hash)
       setNotice('Transaction sent. Waiting for Sepolia confirmation…')
       // An unbounded wait here left the cart stuck on Processing: the public RPC
@@ -277,11 +355,17 @@ export default function App() {
           address: storeAddress,
           abi: shopAbi,
           functionName: product === 'hat' ? 'hasHat' : 'hasGlasses',
-          args: [account],
+          args: [to ?? account],
         })
       }
       if (!confirmed) {
         throw new Error('Sepolia has not confirmed this yet. Open the transaction link, then reload the page.')
+      }
+      const item = product === 'hat' ? 'hat' : 'shades'
+      if (to) {
+        setNotice(`Gift sent: the ${item} unlock now belongs to ${to.slice(0, 6)}…${to.slice(-4)}.`)
+        say(`What a nice gift! The ${item} are wrapped and on their way on Sepolia.`.replace('hat are', 'hat is'))
+        return true
       }
       const [currentAccount] = await client.getAddresses()
       if (currentAccount?.toLowerCase() === account.toLowerCase()) {
@@ -293,7 +377,6 @@ export default function App() {
           setGlassesPreview(true)
         }
       }
-      const item = product === 'hat' ? 'hat' : 'shades'
       setNotice(`The ${item} ${product === 'hat' ? 'is' : 'are'} yours! Now equipped on Mochi.`)
       say(`Looking good! Your wallet now holds the ${item} unlock on Sepolia.`)
       return true
@@ -360,28 +443,26 @@ export default function App() {
                   <div className="price-row"><div><span className="price-label">TOTAL</span><strong>{formatEther(cartTotal)} ETH</strong></div></div>
                   <p className="item-menu-note">{cart.length} transaction{cart.length > 1 ? 's' : ''}: the contract sells each item through its own function, so the wallet prompts once per item.</p>
 
-                  <div className={`screen-row${screenBlocked ? ' blocked' : ''}`}>
-                    <span className="price-label">WALLET SCREENING</span>
-                    {!account && <span>Connect a wallet to screen it</span>}
-                    {account && screening === null && <span>Checking with Intercepta...</span>}
-                    {screening?.state === 'skipped' && <span>Not configured</span>}
-                    {screening?.state === 'error' && <span>Unavailable: {screening.reason}</span>}
-                    {screening?.state === 'ok' && (
-                      <span>
-                        {screening.blocked ? 'Flagged, payment held' : 'No blocking flags'}
-                        {screening.score !== null ? ` - risk score ${screening.score}` : ''}
-                        {screening.score === 0 && screening.flags.length === 0 ? ', no mainnet history on this address' : ''}
-                      </span>
-                    )}
-                  </div>
-                  {screening?.state === 'ok' && screening.flags.length > 0 && (
-                    <ul className="cart-list screen-flags">
-                      {screening.flags.map((flag) => (
-                        <li key={flag.name}><span>{flag.name.replace(/_/g, ' ')}</span><span>risk {flag.risk}</span></li>
-                      ))}
-                    </ul>
+                  {giftsEnabled && (
+                    <label className="gift-field">
+                      <span className="price-label">GIFT TO (OPTIONAL)</span>
+                      <input
+                        type="text"
+                        inputMode="text"
+                        spellCheck={false}
+                        placeholder="0x… leave empty to buy for yourself"
+                        value={giftTo}
+                        disabled={busy !== null}
+                        onChange={(event) => setGiftTo(event.target.value)}
+                      />
+                      {giftInvalid && <span className="gift-error">Not a valid 0x address</span>}
+                    </label>
                   )}
-                  <button className="buy-button" type="button" disabled={busy !== null || cart.length === 0 || screenBlocked} onClick={() => void checkout()}>{busy !== null ? 'Processing...' : screenBlocked ? 'Held: destination flagged' : !account ? 'Connect wallet to pay' : `Pay ${formatEther(cartTotal)} ETH`}</button>
+
+                  <ScreenRow label="PAYING WALLET" address={account} result={screening} />
+                  {recipient && <ScreenRow label="GIFT RECIPIENT" address={recipient} result={recipientScreening} />}
+
+                  <button className="buy-button" type="button" disabled={busy !== null || cart.length === 0 || screenBlocked || screenPending || giftInvalid} onClick={() => void checkout()}>{busy !== null ? 'Processing...' : screenBlocked ? heldReason : screenPending ? 'Screening with Intercepta...' : !account ? 'Connect wallet to pay' : recipient ? `Gift for ${formatEther(cartTotal)} ETH` : `Pay ${formatEther(cartTotal)} ETH`}</button>
                   {busy !== null
                     ? <button className="cart-remove" type="button" onClick={() => setBusy(null)}>Stop waiting</button>
                     : <button className="preview-button" type="button" onClick={() => setCheckingOut(false)}>Back</button>}
