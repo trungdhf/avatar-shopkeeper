@@ -170,19 +170,22 @@ export default function App() {
     }
   }
 
-  // Screen the contract the money is about to go to, before the wallet is asked
-  // to sign anything. The key stays server side, so this goes through our own
-  // /api/screen route rather than calling the vendor from the browser.
+  // Screen the paying wallet before it is asked to sign. The wallet is screened
+  // rather than the shop contract because the provider indexes Ethereum mainnet:
+  // an address is the same on every chain, so a buyer's mainnet history is real
+  // signal, while a contract deployed only on Sepolia always comes back empty and
+  // would make this a gate that can never close.
+  // The key stays server side, so this calls our own route, not the vendor.
   useEffect(() => {
-    if (!checkingOut || !storeAddress) return
+    if (!checkingOut || !account) return
     let alive = true
     setScreening(null)
-    void fetch(`/api/screen?address=${storeAddress}`)
+    void fetch(`/api/screen?address=${account}`)
       .then((response) => response.json() as Promise<Screening>)
       .then((result) => { if (alive) setScreening(result) })
       .catch(() => { if (alive) setScreening({ state: 'error', reason: 'Screening route unreachable' }) })
     return () => { alive = false }
-  }, [checkingOut])
+  }, [checkingOut, account])
 
   const screenBlocked = screening?.state === 'ok' && screening.blocked
 
@@ -358,14 +361,16 @@ export default function App() {
                   <p className="item-menu-note">{cart.length} transaction{cart.length > 1 ? 's' : ''}: the contract sells each item through its own function, so the wallet prompts once per item.</p>
 
                   <div className={`screen-row${screenBlocked ? ' blocked' : ''}`}>
-                    <span className="price-label">DESTINATION SCREENING</span>
-                    {screening === null && <span>Checking with Intercepta...</span>}
+                    <span className="price-label">WALLET SCREENING</span>
+                    {!account && <span>Connect a wallet to screen it</span>}
+                    {account && screening === null && <span>Checking with Intercepta...</span>}
                     {screening?.state === 'skipped' && <span>Not configured</span>}
                     {screening?.state === 'error' && <span>Unavailable: {screening.reason}</span>}
                     {screening?.state === 'ok' && (
                       <span>
                         {screening.blocked ? 'Flagged, payment held' : 'No blocking flags'}
-                        {screening.score !== null ? ` (score ${screening.score})` : ''}
+                        {screening.score !== null ? ` - risk score ${screening.score}` : ''}
+                        {screening.score === 0 && screening.flags.length === 0 ? ', no mainnet history on this address' : ''}
                       </span>
                     )}
                   </div>

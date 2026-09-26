@@ -11,9 +11,18 @@ const BASE = 'https://api.web3antivirus.io'
 const PATH = (address: string) => `/api/public/v2/extension/account/${address}/quick-scan`
 
 // Traits that should stop a payment rather than merely warn about it. The docs
-// list fifteen trait names; these are the unambiguous ones. toxicScore is left
-// out of this decision on purpose, because its scale is not documented in the
-// reference page, so it is reported rather than thresholded.
+// list fifteen names; these three are the unambiguous ones.
+//
+// toxicScore is reported, never thresholded. Probing the live API showed it is a
+// float on an undocumented scale, and that low values are ordinary: a long-lived
+// mainnet wallet scored 0.04 purely from non_kyc_transfers, a trait most active
+// addresses carry. Blocking on a number would stop honest buyers, so the decision
+// stays on these names.
+//
+// The index covers Ethereum mainnet. An address with no mainnet history scores 0
+// with no traits, which means absent rather than cleared, so callers should screen
+// something that has mainnet history to learn anything: a buyer's wallet, not a
+// freshly deployed testnet contract.
 const BLOCKING = new Set(['sanction_address', 'known_scammer', 'blacklist'])
 
 export type Flag = { name: string; risk: number; description: string; txsCount: number }
