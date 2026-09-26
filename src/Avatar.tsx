@@ -2,7 +2,7 @@ import { Canvas, createPortal, useFrame, useLoader, useThree } from '@react-thre
 import { VRMLoaderPlugin, type VRM } from '@pixiv/three-vrm'
 import { createVRMAnimationClip, VRMAnimationLoaderPlugin, type VRMAnimation } from '@pixiv/three-vrm-animation'
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
-import { AnimationMixer, CanvasTexture, DoubleSide, LoopOnce, RingGeometry, SRGBColorSpace, Vector3, type AnimationAction, type Group } from 'three'
+import { AnimationMixer, CanvasTexture, CylinderGeometry, DoubleSide, LoopOnce, RingGeometry, SRGBColorSpace, Vector3, type AnimationAction, type Group } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 function CowboyHat({ color }: { color: string }) {
@@ -31,9 +31,29 @@ function CowboyHat({ color }: { color: string }) {
   }, [])
 
   useEffect(() => () => patch.dispose(), [patch])
+  const crown = useMemo(() => {
+    const height = 0.13
+    const geometry = new CylinderGeometry(0.1, 0.123, height, 48, 10)
+    const positions = geometry.attributes.position
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i)
+      const y = positions.getY(i)
+      const z = positions.getZ(i)
+      const h = (y + height / 2) / height
+      const front = Math.max(0, z / 0.1)
+      const pinchedX = x * (1 - 0.2 * h * h * front)
+      const crease = 0.028 * Math.exp(-((pinchedX / 0.04) ** 2)) * h ** 4
+      const rounded = 0.012 * h ** 6 * ((x * x + z * z) / 0.01)
+      positions.setXYZ(i, pinchedX, y - crease - rounded, z)
+    }
+    geometry.computeVertexNormals()
+    return geometry
+  }, [])
+
+  useEffect(() => () => crown.dispose(), [crown])
   const brim = useMemo(() => {
     const inner = 0.118
-    const outer = 0.23
+    const outer = 0.2
     const geometry = new RingGeometry(inner, outer, 64, 6)
     const positions = geometry.attributes.position
     for (let i = 0; i < positions.count; i++) {
@@ -44,7 +64,7 @@ function CowboyHat({ color }: { color: string }) {
       const t = (radius - inner) / (outer - inner)
       const depth = 1.53 - 0.28 * t
       const side = Math.cos(angle) ** 2
-      const lift = 0.055 * t * t * side - 0.012 * t * (1 - side)
+      const lift = 0.055 * t * t * side + 0.006 * t * (1 - side)
       positions.setXYZ(i, radius * Math.cos(angle), lift, radius * Math.sin(angle) * depth)
     }
     geometry.computeVertexNormals()
@@ -54,15 +74,11 @@ function CowboyHat({ color }: { color: string }) {
   useEffect(() => () => brim.dispose(), [brim])
 
   return (
-    <group position={[0, 0.085, 0.005]} scale={0.86}>
+    <group position={[0, 0.085, 0.005]} rotation={[-0.1, 0, 0]} scale={0.86}>
       <group position={[0, 0, 0.015]} scale={[1, 1, 1.53]}>
-        <mesh position={[0, 0.085, 0]} castShadow>
-          <cylinderGeometry args={[0.1, 0.123, 0.17, 40, 1, true]} />
+        <mesh position={[0, 0.065, 0]} castShadow>
+          <primitive object={crown} attach="geometry" />
           <meshStandardMaterial color={color} roughness={0.85} side={DoubleSide} />
-        </mesh>
-        <mesh position={[0, 0.17, 0]} scale={[1, 0.18, 1]} castShadow>
-          <sphereGeometry args={[0.1, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <meshStandardMaterial color={color} roughness={0.85} />
         </mesh>
         <mesh position={[0, 0.02, 0]}>
           <cylinderGeometry args={[0.1215, 0.1235, 0.03, 40, 1, true]} />
