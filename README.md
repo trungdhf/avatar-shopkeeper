@@ -41,6 +41,14 @@ A contract is already deployed and wired to the live site, so this section is on
 
 Use the [Sepolia explorer](https://sepolia.etherscan.io/) to check the deployment and purchase transaction. The default public RPC may rate-limit demos; supply a reliable Sepolia RPC URL if needed. `VITE_` variables are embedded in the public frontend and must never contain a secret.
 
+## Destination screening
+
+Opening checkout screens the shop contract with [Intercepta](https://intercepta.io/) before the wallet is asked to sign, using the [quick scan address](https://docs.web3antivirus.io/reference/quick-scan-address) endpoint. A `sanction_address`, `known_scammer` or `blacklist` trait holds the payment; anything else is reported. `toxicScore` is shown but not thresholded, because its scale is not given in that reference page.
+
+The key is read as `INTERCEPTA_API_KEY`, with no `VITE_` prefix on purpose: Vite inlines the value of every `VITE_` variable into the published bundle, so a key named that way would be readable by anyone who opens the page. Requests therefore go through this project's own `/api/screen` route, served by `api/screen.ts` on Vercel and by a `apply: 'serve'` Vite plugin during development. Set `INTERCEPTA_API_KEY` in `.env` locally and in the hosting provider's environment for production. With no key the route answers `{"state":"skipped"}` and checkout continues unscreened.
+
+The client bundle was checked to confirm the separation holds: it contains no vendor hostname, no `X-API-KEY`, and no reference to the key's name.
+
 ## Verify
 
 ```sh
@@ -60,7 +68,7 @@ The contract test compiles Solidity and executes real EVM calls in memory. It ch
 3. Reload the page: ownership is read from the contract and both items come back on, with no wallet prompt.
 4. Submit the live site, this public repository, and a narrated 2–4 minute screen recording in the ETHGlobal Hacker Dashboard before **09:00 JST, Sunday 27 September 2026**. The venue finalist slide lists the video and live app as requirements. Present live if invited.
 
-The shopkeeper's replies are scripted product guidance, not an AI agent, and the lip sync is a vowel-to-viseme mapping over that text rather than speech recognition or audio. No World, ENS, Sui, Uniswap or 1inch SDK is integrated; do not select those partner prizes unless a qualifying integration is implemented. ETHGlobal permits selecting up to three partner prizes, and partner details should be checked again before submission.
+The shopkeeper's replies are scripted product guidance, not an AI agent, and the lip sync is a vowel-to-viseme mapping over that text rather than speech recognition or audio. Intercepta screens the payment destination at checkout, as described above. No World, ENS, Sui, Uniswap or 1inch SDK is integrated; do not select those partner prizes unless a qualifying integration is implemented, and check each partner's own definition of a qualifying integration before selecting it. ETHGlobal permits selecting up to three partner prizes, and partner details should be checked again before submission.
 
 ## Attribution and project history
 

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { createWalletClient, custom, formatEther, type Address, type Hash } from 'viem'
 import { sepolia } from 'viem/chains'
 import Avatar, { say, speech, type ShelfItem, type Sku } from './Avatar'
+// Type only: erased at build time, so no server code reaches the bundle.
+import type { Screening } from '../api/intercepta'
 import { publicClient, shopAbi, storeAddress } from './shop'
 
 const colors = [
@@ -65,6 +67,7 @@ export default function App() {
   const [cart, setCart] = useState<Sku[]>([])
   const [checkingOut, setCheckingOut] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
+  const [screening, setScreening] = useState<Screening | null>(null)
 
   // Development only recording aid: chain local VRoid motions as the idle loop.
   // DEV gates it and /dev-motions exists only under the dev server, so a build
@@ -166,6 +169,22 @@ export default function App() {
       setNotice(errorMessage(error))
     }
   }
+
+  // Screen the contract the money is about to go to, before the wallet is asked
+  // to sign anything. The key stays server side, so this goes through our own
+  // /api/screen route rather than calling the vendor from the browser.
+  useEffect(() => {
+    if (!checkingOut || !storeAddress) return
+    let alive = true
+    setScreening(null)
+    void fetch(`/api/screen?address=${storeAddress}`)
+      .then((response) => response.json() as Promise<Screening>)
+      .then((result) => { if (alive) setScreening(result) })
+      .catch(() => { if (alive) setScreening({ state: 'error', reason: 'Screening route unreachable' }) })
+    return () => { alive = false }
+  }, [checkingOut])
+
+  const screenBlocked = screening?.state === 'ok' && screening.blocked
 
   const skuPrice = (sku: Sku) => (sku === 'hat' ? price : glassesPrice)
   const skuLabel = (sku: Sku) => (sku === 'hat' ? 'Tokyo Cowboy hat' : 'Shibuya Shades')
@@ -337,7 +356,27 @@ export default function App() {
                   </ul>
                   <div className="price-row"><div><span className="price-label">TOTAL</span><strong>{formatEther(cartTotal)} ETH</strong></div></div>
                   <p className="item-menu-note">{cart.length} transaction{cart.length > 1 ? 's' : ''}: the contract sells each item through its own function, so the wallet prompts once per item.</p>
-                  <button className="buy-button" type="button" disabled={busy !== null || cart.length === 0} onClick={() => void checkout()}>{busy !== null ? 'Processing...' : !account ? 'Connect wallet to pay' : `Pay ${formatEther(cartTotal)} ETH`}</button>
+
+                  <div className={`screen-row${screenBlocked ? ' blocked' : ''}`}>
+                    <span className="price-label">DESTINATION SCREENING</span>
+                    {screening === null && <span>Checking with Intercepta...</span>}
+                    {screening?.state === 'skipped' && <span>Not configured</span>}
+                    {screening?.state === 'error' && <span>Unavailable: {screening.reason}</span>}
+                    {screening?.state === 'ok' && (
+                      <span>
+                        {screening.blocked ? 'Flagged, payment held' : 'No blocking flags'}
+                        {screening.score !== null ? ` (score ${screening.score})` : ''}
+                      </span>
+                    )}
+                  </div>
+                  {screening?.state === 'ok' && screening.flags.length > 0 && (
+                    <ul className="cart-list screen-flags">
+                      {screening.flags.map((flag) => (
+                        <li key={flag.name}><span>{flag.name.replace(/_/g, ' ')}</span><span>risk {flag.risk}</span></li>
+                      ))}
+                    </ul>
+                  )}
+                  <button className="buy-button" type="button" disabled={busy !== null || cart.length === 0 || screenBlocked} onClick={() => void checkout()}>{busy !== null ? 'Processing...' : screenBlocked ? 'Held: destination flagged' : !account ? 'Connect wallet to pay' : `Pay ${formatEther(cartTotal)} ETH`}</button>
                   {busy !== null
                     ? <button className="cart-remove" type="button" onClick={() => setBusy(null)}>Stop waiting</button>
                     : <button className="preview-button" type="button" onClick={() => setCheckingOut(false)}>Back</button>}

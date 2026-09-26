@@ -48,3 +48,9 @@ body{overflow-x:clip}
 .stage-status{position:absolute;z-index:1;left:5.1%;bottom:54px;margin:0;font-size:11px;color:#6f6a65}
 .shop-grid{padding-top:22px}
 @media(max-width:740px){.cart-drawer{width:min(88vw,300px)}.stage-status{left:5%}}
+
+/* Destination screening row in the payment step. */
+.screen-row{display:flex;flex-direction:column;gap:3px;font-size:11px;line-height:1.5;color:#3f5a4a;background:#eef5f0;border-radius:8px;padding:10px;margin:0 0 10px}
+.screen-row.blocked{color:#8f3a2c;background:#fdeee9}
+.screen-row .price-label{color:inherit;opacity:.75}
+.screen-flags li{font-size:11px;color:#8f3a2c}
