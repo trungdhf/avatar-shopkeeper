@@ -43,7 +43,7 @@ Use the [Sepolia explorer](https://sepolia.etherscan.io/) to check the deploymen
 
 ## Destination screening
 
-Opening checkout screens the **paying wallet** with [Intercepta](https://intercepta.io/) before it is asked to sign, using the [quick scan address](https://docs.web3antivirus.io/reference/quick-scan-address) endpoint. A `sanction_address`, `known_scammer` or `blacklist` trait holds the payment; other traits are reported.
+Opening checkout screens the **paying wallet** with [Intercepta](https://intercepta.io/) before it is asked to sign, using the deep [scan address](https://docs.web3antivirus.io/reference/scan-address) endpoint. The shallower `quick-scan` endpoint is deliberately not used: it answered 0 with no traits for every address tried, including the vendor's own documented sample, which the deep endpoint scores 10.36 with a phishing trait. A `sanction_address`, `known_scammer` or `blacklist` trait holds the payment; other traits are reported.
 
 It screens the wallet rather than the shop contract on purpose. The provider indexes Ethereum mainnet, so an address deployed only on Sepolia returns a score of 0 with no traits: absent data rather than a clean result, which would make the check a gate that can never close. A wallet address is the same on every chain, so its mainnet history is real signal. `toxicScore` is displayed but never used as a threshold, because probing the live API showed it is a float on an undocumented scale where low values are ordinary, and a zero means the address has no mainnet history at all.
 

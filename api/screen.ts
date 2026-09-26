@@ -10,10 +10,14 @@
 // the published bundle, so a key named that way would be readable by anyone who
 // opens the page.
 //
-// https://docs.web3antivirus.io/reference/quick-scan-address
+// https://docs.web3antivirus.io/reference/scan-address
 
 const BASE = 'https://api.web3antivirus.io'
-const PATH = (address: string) => `/api/public/v2/extension/account/${address}/quick-scan`
+// The deep scan, not quick-scan. quick-scan answered 0 with no traits for every
+// address tried, including the vendor's own documented sample, which this one
+// scores 10.36 with a fake_phishing_contract_communication trait. quick-scan
+// looks like a cache read, so it would have made this check decorative.
+const PATH = (address: string) => `/api/public/v2/extension/account/${address}/toxic-score`
 
 // Traits that should stop a payment rather than merely warn about it. The docs
 // list fifteen names; these three are the unambiguous ones.
