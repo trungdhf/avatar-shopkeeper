@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-import { screenAddress } from './api/intercepta'
+import { screenAddress } from './api/screen'
 
 // Serves local .vrma files to debug.html. apply: 'serve' keeps it out of the
 // production build, so these motions are never published: the BOOTH licence

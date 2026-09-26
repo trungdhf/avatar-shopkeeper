@@ -3,7 +3,7 @@ import { createWalletClient, custom, formatEther, type Address, type Hash } from
 import { sepolia } from 'viem/chains'
 import Avatar, { say, speech, type ShelfItem, type Sku } from './Avatar'
 // Type only: erased at build time, so no server code reaches the bundle.
-import type { Screening } from '../api/intercepta'
+import type { Screening } from '../api/screen'
 import { publicClient, shopAbi, storeAddress } from './shop'
 
 const colors = [
