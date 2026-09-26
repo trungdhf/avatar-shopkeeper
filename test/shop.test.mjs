@@ -109,3 +109,28 @@ test('glasses are a separate entitlement from the cap', async () => {
   assert.equal(await read(buyer, 'hasGlasses', [buyer.toString()]), true)
   assert.equal((await evm.stateManager.getAccount(address)).balance, price * 2n)
 })
+
+test('a gift unlocks the recipient, not the payer, and cannot be sent twice or to zero', async () => {
+  const { evm, owner, buyer, other, address, call, read } = await deploy()
+  assert.equal(await read(owner, 'VERSION'), 2n)
+  const price = await read(owner, 'PRICE')
+
+  const gift = await call(buyer, 'purchaseHatFor', [other.toString()], price)
+  assert.equal(gift.execResult.exceptionError, undefined)
+  assert.equal(gift.execResult.logs?.length, 2)
+  assert.equal(await read(other, 'hasHat', [other.toString()]), true)
+  assert.equal(await read(buyer, 'hasHat', [buyer.toString()]), false)
+
+  const again = await call(buyer, 'purchaseHatFor', [other.toString()], price)
+  assert.ok(again.execResult.exceptionError)
+  const zero = await call(buyer, 'purchaseGlassesFor', ['0x0000000000000000000000000000000000000000'], price)
+  assert.ok(zero.execResult.exceptionError)
+  const underpaid = await call(buyer, 'purchaseGlassesFor', [other.toString()], price - 1n)
+  assert.ok(underpaid.execResult.exceptionError)
+
+  const shades = await call(buyer, 'purchaseGlassesFor', [other.toString()], price)
+  assert.equal(shades.execResult.exceptionError, undefined)
+  assert.equal(await read(other, 'hasGlasses', [other.toString()]), true)
+  assert.equal(await read(buyer, 'hasGlasses', [buyer.toString()]), false)
+  assert.equal((await evm.stateManager.getAccount(address)).balance, price * 2n)
+})
