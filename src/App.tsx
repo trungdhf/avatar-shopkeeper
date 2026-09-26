@@ -185,7 +185,7 @@ export default function App() {
       .then((value) => { if (active) setOwned(value) })
       .catch((error: unknown) => { if (active) setNotice(`Cannot check ownership: ${errorMessage(error)}`) })
     void publicClient.readContract({ address: storeAddress, abi: shopAbi, functionName: 'hasGlasses', args: [account] })
-      .then((value) => { if (active) setGlassesOwned(value) })
+      .then((value) => { if (active) { setGlassesOwned(value); if (value) setGlassesPreview(true) } })
       .catch((error: unknown) => { if (active) setNotice(`Cannot check ownership: ${errorMessage(error)}`) })
     return () => { active = false }
   }, [account])
