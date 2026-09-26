@@ -1,6 +1,6 @@
 # Mochi Mart
 
-A tiny 3D shopkeeper for digital avatar accessories, built for ETHGlobal Tokyo 2026. Preview a hip-hop cap with an ETHGlobal Tokyo 2026 text patch in three colors on Trung's VRM avatar, then unlock all three for one wallet on Ethereum Sepolia. The cap is an in-app entitlement stored in `AvatarShop.hasHat`; it is **not** an NFT or exclusive ownership of the 3D mesh. The patch is an event-themed design, not an official ETHGlobal product or a claim of sponsorship.
+A tiny 3D shopkeeper for digital avatar accessories, built for ETHGlobal Tokyo 2026. Preview a cowboy hat with an ETHGlobal Tokyo 2026 band patch in three colors on Trung's VRM avatar, then unlock all three for one wallet on Ethereum Sepolia. The hat is an in-app entitlement stored in `AvatarShop.hasHat`; it is **not** an NFT or exclusive ownership of the 3D mesh. The patch is an event-themed design, not an official ETHGlobal product or a claim of sponsorship.
 
 A second accessory, **Shibuya Shades** (sakura-tinted sunglasses), is sold separately: `GLASSES_PRICE()`, `hasGlasses(address)` and `purchaseGlasses()`. Cap and shades can be previewed, bought and equipped independently.
 

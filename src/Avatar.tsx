@@ -2,27 +2,27 @@ import { Canvas, createPortal, useFrame, useLoader, useThree } from '@react-thre
 import { VRMLoaderPlugin, type VRM } from '@pixiv/three-vrm'
 import { createVRMAnimationClip, VRMAnimationLoaderPlugin, type VRMAnimation } from '@pixiv/three-vrm-animation'
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
-import { AnimationMixer, CanvasTexture, DoubleSide, LoopOnce, PlaneGeometry, SRGBColorSpace, Vector3, type AnimationAction, type Group } from 'three'
+import { AnimationMixer, CanvasTexture, DoubleSide, LoopOnce, RingGeometry, SRGBColorSpace, Vector3, type AnimationAction, type Group } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-function HipHopCap({ color }: { color: string }) {
+function CowboyHat({ color }: { color: string }) {
   const patch = useMemo(() => {
     const canvas = document.createElement('canvas')
     canvas.width = 512
-    canvas.height = 256
+    canvas.height = 160
     const context = canvas.getContext('2d')
     if (context) {
       context.fillStyle = '#222733'
-      context.fillRect(0, 0, 512, 256)
+      context.fillRect(0, 0, 512, 160)
       context.strokeStyle = '#f5e4c8'
-      context.lineWidth = 12
-      context.strokeRect(12, 12, 488, 232)
+      context.lineWidth = 8
+      context.strokeRect(8, 8, 496, 144)
       context.fillStyle = '#fff8eb'
       context.textAlign = 'center'
-      context.font = '900 70px sans-serif'
-      context.fillText('ETHGLOBAL', 256, 120)
-      context.font = 'bold 45px sans-serif'
-      context.fillText('TOKYO 2026', 256, 186)
+      context.font = '900 64px sans-serif'
+      context.fillText('ETHGLOBAL', 256, 78)
+      context.font = 'bold 40px sans-serif'
+      context.fillText('TOKYO 2026', 256, 132)
     }
     const texture = new CanvasTexture(canvas)
     texture.colorSpace = SRGBColorSpace
@@ -31,42 +31,51 @@ function HipHopCap({ color }: { color: string }) {
   }, [])
 
   useEffect(() => () => patch.dispose(), [patch])
-  const patchSurface = useMemo(() => {
-    const geometry = new PlaneGeometry(0.13, 0.054, 16, 8)
+  const brim = useMemo(() => {
+    const inner = 0.118
+    const outer = 0.23
+    const geometry = new RingGeometry(inner, outer, 64, 6)
     const positions = geometry.attributes.position
     for (let i = 0; i < positions.count; i++) {
       const x = positions.getX(i)
-      const y = positions.getY(i) + 0.063
-      const dome = Math.max(0, 1 - (x / 0.1197) ** 2 - (y / 0.126) ** 2)
-      positions.setZ(i, 0.015 + 0.18375 * Math.sqrt(dome) + 0.004)
+      const y = positions.getY(i)
+      const radius = Math.hypot(x, y)
+      const angle = Math.atan2(y, x)
+      const t = (radius - inner) / (outer - inner)
+      const depth = 1.53 - 0.28 * t
+      const side = Math.cos(angle) ** 2
+      const lift = 0.055 * t * t * side - 0.012 * t * (1 - side)
+      positions.setXYZ(i, radius * Math.cos(angle), lift, radius * Math.sin(angle) * depth)
     }
     geometry.computeVertexNormals()
     return geometry
   }, [])
 
-  useEffect(() => () => patchSurface.dispose(), [patchSurface])
+  useEffect(() => () => brim.dispose(), [brim])
 
   return (
     <group position={[0, 0.085, 0.005]} scale={0.86}>
-      <mesh position={[0, 0, 0.015]} scale={[1.14, 1.2, 1.75]} castShadow>
-        <sphereGeometry args={[0.105, 36, 24, 0, Math.PI * 2, 0, Math.PI / 2]} />
+      <group position={[0, 0, 0.015]} scale={[1, 1, 1.53]}>
+        <mesh position={[0, 0.085, 0]} castShadow>
+          <cylinderGeometry args={[0.1, 0.123, 0.17, 40, 1, true]} />
+          <meshStandardMaterial color={color} roughness={0.85} side={DoubleSide} />
+        </mesh>
+        <mesh position={[0, 0.17, 0]} scale={[1, 0.18, 1]} castShadow>
+          <sphereGeometry args={[0.1, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <meshStandardMaterial color={color} roughness={0.85} />
+        </mesh>
+        <mesh position={[0, 0.02, 0]}>
+          <cylinderGeometry args={[0.1215, 0.1235, 0.03, 40, 1, true]} />
+          <meshStandardMaterial color="#292d38" roughness={0.85} side={DoubleSide} />
+        </mesh>
+        <mesh position={[0, 0.021, 0]}>
+          <cylinderGeometry args={[0.1235, 0.1255, 0.034, 24, 1, true, -0.45, 0.9]} />
+          <meshBasicMaterial map={patch} />
+        </mesh>
+      </group>
+      <mesh position={[0, 0.002, 0.015]} castShadow>
+        <primitive object={brim} attach="geometry" />
         <meshStandardMaterial color={color} roughness={0.8} side={DoubleSide} />
-      </mesh>
-      <mesh position={[0, 0, 0.015]} rotation={[Math.PI / 2, 0, 0]} scale={[1.07, 1.62, 1]}>
-        <torusGeometry args={[0.112, 0.006, 8, 48]} />
-        <meshStandardMaterial color="#292d38" roughness={0.85} />
-      </mesh>
-      <mesh position={[0, 0.001, 0.165]} rotation={[0.15, 0, 0]} scale={[0.125, 0.008, 0.087]} castShadow>
-        <sphereGeometry args={[1, 32, 16]} />
-        <meshStandardMaterial color={color} roughness={0.75} />
-      </mesh>
-      <mesh position={[0, 0.063, 0]}>
-        <primitive object={patchSurface} attach="geometry" />
-        <meshBasicMaterial map={patch} side={DoubleSide} />
-      </mesh>
-      <mesh position={[0, 0.102, 0.025]}>
-        <sphereGeometry args={[0.012, 16, 12]} />
-        <meshStandardMaterial color="#292d38" roughness={0.85} />
       </mesh>
     </group>
   )
@@ -236,7 +245,7 @@ function Character({ hatColor, wearing, wearingGlasses, motionRequest, onMotionS
   return (
     <group ref={character}>
       <primitive object={vrm.scene} />
-      {head && wearing && createPortal(<HipHopCap color={hatColor} />, head)}
+      {head && wearing && createPortal(<CowboyHat color={hatColor} />, head)}
       {head && wearingGlasses && createPortal(<Sunglasses />, head)}
     </group>
   )
