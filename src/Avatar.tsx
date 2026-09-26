@@ -244,14 +244,16 @@ function EyewearModel({ kind }: { kind: string }) {
 
 // Pointer events come from the raycaster, so a group is enough: the ray hits a
 // child mesh and the click bubbles up to here.
-function Pickable({ onPick, hit = [0.38, 0.26, 0.38], hitY = 0.08, children }: {
+function Pickable({ onPick, position, hit = [0.38, 0.26, 0.38], hitY = 0.08, children }: {
   onPick: (x: number, y: number) => void
+  position: [number, number, number]
   hit?: [number, number, number]
   hitY?: number
   children: ReactNode
 }) {
   return (
     <group
+      position={position}
       onClick={(event) => { event.stopPropagation(); onPick(event.clientX, event.clientY) }}
       onPointerOver={(event) => { event.stopPropagation(); document.body.style.cursor = 'pointer' }}
       onPointerOut={() => { document.body.style.cursor = 'auto' }}
@@ -368,11 +370,8 @@ function DisplayStand({ onPickHat, onPickEyewear, onPickTee }: {
         const row = Math.floor(index / 3)
         const column = index % 3
         return (
-          <Pickable key={hat.id} onPick={(x, y) => onPickHat(hat.id, x, y)}>
-            <group
-              position={[left + (column - 1) * 0.44, hatShelves[1 - row] + 0.04, 0.02]}
-              rotation={[0, (column - 1) * 0.26, 0]}
-            >
+          <Pickable key={hat.id} position={[left + (column - 1) * 0.44, hatShelves[1 - row] + 0.04, 0.02]} onPick={(x, y) => onPickHat(hat.id, x, y)}>
+            <group rotation={[0, (column - 1) * 0.26, 0]}>
               <HatModel kind={hat.kind} color={hat.color} />
             </group>
           </Pickable>
@@ -380,8 +379,8 @@ function DisplayStand({ onPickHat, onPickEyewear, onPickTee }: {
       })}
 
       {eyewearCatalogue.map((item, index) => (
-        <Pickable key={item.id} onPick={(x, y) => onPickEyewear(item.id, x, y)} hit={[0.3, 0.16, 0.24]} hitY={0.02}>
-          <group position={[right + (index - 1) * 0.42, rightShelves[1] + 0.1, 0.04]} rotation={[0.3, (index - 1) * 0.3, 0]}>
+        <Pickable key={item.id} position={[right + (index - 1) * 0.42, rightShelves[1] + 0.1, 0.04]} onPick={(x, y) => onPickEyewear(item.id, x, y)} hit={[0.3, 0.16, 0.24]} hitY={0.02}>
+          <group rotation={[0.3, (index - 1) * 0.3, 0]}>
             <EyewearModel kind={item.kind} />
           </group>
         </Pickable>
@@ -392,8 +391,8 @@ function DisplayStand({ onPickHat, onPickEyewear, onPickTee }: {
         <meshStandardMaterial color="#b49a8d" roughness={0.5} metalness={0.3} />
       </mesh>
       {teeCatalogue.map((tee, index) => (
-        <Pickable key={tee.id} onPick={(x, y) => onPickTee(tee.id, x, y)} hit={[0.34, 0.42, 0.14]} hitY={-0.08}>
-          <group position={[right + (index - 1) * 0.42, rightShelves[0] + 0.42, 0.02]}>
+        <Pickable key={tee.id} position={[right + (index - 1) * 0.42, rightShelves[0] + 0.42, 0.02]} onPick={(x, y) => onPickTee(tee.id, x, y)} hit={[0.34, 0.42, 0.14]} hitY={-0.08}>
+          <group>
             <Tee color={tee.color} />
           </group>
         </Pickable>
